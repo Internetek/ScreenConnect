@@ -4,51 +4,97 @@ For installing ScreenConnect, using a self-signed certicate works fine with Thre
 
 
 .VARIABLES
+
 CWScreenConnectThumbprint: Set at Global level in DRMM. Identifies the ScreenConnect instance. Found in ScreenConnect.
+
 CWScreenConnectBaseUrl: Set at Global level in DRMM. URL of our ScreenConnect instance.
+
 CWScreenConnectInstallerUrl: URL of the ScreenConnect installer. Set at the Client level. This ensures ScreenConnect bakes in the correct variables.
+
 CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Global level.
+
 CWScreenConnectCurrentVersion: Version of ScreenConnect we're aiming for. Set at Global level.
 
 .EXAMPLE OUTPUT
+
 Control/ScreenConnect Installer [WIN]
+
 Starting script
+
 Version 4.0
+
 Variables received from DRMM
+
   Thumbprint: REDACTED
+  
   Base URL: REDACTED
+  
   Installer URL: REDACTED
+  
   UDF: 11
+  
   Target Version: 24.3.7.9067
+  
   Action: upgrade
+  
   Script: C:\ProgramData\CentraStage\Packages\REDACTED\command.ps1
+
 Setting functions
+
   Done
+
 Starting preflight checks
+
   Elevated privs confirmed, continuing script
+  
   Able to write and delete in target directory, continuing script
+  
   ScreenConnect is installed
+  
   Done
+
 Starting upgrade
+
   Checking version
+  
   ScreenConnect version (23.2.9.8466) doesn't match target version (24.3.7.9067), continuing
+  
   Downloading install file
+  
   Using TLS1.3
+  
   REDACTED.ClientSetup.msi downloaded
+  
   Stopping service before update
+  
   Service has stopped, continuing
+  
   Extracting upgrade files
+  
   Extraction successful, continuing
+  
   Copying existing configuration
+  
   Upgrading files
+  
   Copy from C:\ProgramData\CentraStage\Packages\REDACTED\staging\*
+  
   Upgrading C:\Program Files (x86)\ScreenConnect Client (REDACTED)
+  
   Copy to production successful
+  
   Restarting service
+  
   Service has started
+  
   Updating version in registry
+  
   Version 24.3.7.9067 found in files
+  
   Registry entry is {REDACTED}
+  
   Version written to registry
+  
   Cleaning up files
+
 Script completed
