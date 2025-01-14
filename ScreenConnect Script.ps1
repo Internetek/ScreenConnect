@@ -8,7 +8,7 @@ There is loads of output and checks because it makes it easier for me to diagnos
 4.0
 
 .AUTHOR
-John Miller - Internetek
+Internetek
 
 .RESOURCES
 https://www.reddit.com/r/ConnectWiseControl/comments/vwut4k/silently_deploy_the_connectwise_control_agent/
