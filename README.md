@@ -2,6 +2,9 @@ We created this overly complex script to install, upgrade, and uninstall ScreenC
 
 For installing ScreenConnect, using a self-signed certicate works fine with ThreatLocker. Uninstall works fine as well. For automated upgrades within ScreenConnect, the downloaded EXE extracts a MSI that isn't signed and has a randomized name. We got around this by using this script, ran by DRMM, to pull down the MSI update, extracting the files, and overwriting the existing install. 
 
+.REQUIREMENTS
+
+This script requires 7zip to be installed. We download 7zip alongside the script in our RMM, so you'll need to do the same or something similar.
 
 .VARIABLES
 
