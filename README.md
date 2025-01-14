@@ -1,0 +1,1 @@
+We created this overly complex script to install, upgrade, and uninstall ScreenConnect due to issues we found with existing scripts and ScreenConnect being unable to upgrade itself with ThreatLocker in play.
