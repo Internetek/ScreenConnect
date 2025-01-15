@@ -332,6 +332,7 @@ if ($IsInstalled) {
 write-host "  Done"
 
 # === ACTIONS === #
+write-host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
         if (-not $Installed) {
