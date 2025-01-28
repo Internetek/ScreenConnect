@@ -157,8 +157,8 @@ function Install-ScreenConnect {
 # Uninstall action
 function Uninstall-ScreenConnect {
     write-host "Starting uninstall"
-    # Stopping service, supposed to help with uninstall
     write-host "  Stopping service"
+    # Stopping service, supposed to help with uninstall
     try {
         Stop-Service "ScreenConnect Client ($env:CWScreenConnectThumbprint)"
     } catch {
@@ -179,13 +179,14 @@ function Uninstall-ScreenConnect {
         write-host "  Failed to uninstall: $_.Exception.Message"
     }
     # Wait for a bit to make sure uninstall completed
-    Start-Sleep -Seconds 15
+    sleep 15
     # Check if it shows installed
     $IsInstalled = (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)")
     if ($IsInstalled) {
         write-host "  Uninstall appears unsuccessful"
         # Restarting service so we can log in if needed but hiding it so it doesn't clutter the log
-        $StartService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
+        $Arguments = "/c Start-Service ""ScreenConnect Client ($env:CWScreenConnectThumbprint)"""
+        $Process = Start-Process -Wait cmd -ArgumentList $Arguments -PassThru
     } else {
         write-host "  Uninstall appears successful"
     }
@@ -334,10 +335,10 @@ write-host "  Done"
 write-host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
-        if (-not $Installed) {
-            Install-ScreenConnect
-        } else {
+        if ($Installed) {
             Write-Output "  $ProductName already installed, nothing to do"
+        } else {
+            Install-ScreenConnect
         }
     }
     "uninstall" {
