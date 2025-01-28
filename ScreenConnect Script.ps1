@@ -335,21 +335,21 @@ write-host "  Done"
 write-host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
-        if ($Installed) {
+        if ($Installed -eq "True") {
             Write-Output "  $ProductName already installed, nothing to do"
         } else {
             Install-ScreenConnect
         }
     }
     "uninstall" {
-        if ($Installed) {
+        if ($Installed -eq "True") {
             Uninstall-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to do"
         }
     }
     "upgrade" {
-        if ($Installed) {
+        if ($Installed -eq "True") {
             Upgrade-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to upgrade"
