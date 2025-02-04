@@ -216,7 +216,6 @@ function Upgrade-ScreenConnect {
     $StopService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
     If ($StopService.Status -ne 'Running') {
         write-host "  Service has stopped, continuing"
-
     } else {
         write-host "  Service is still running, exiting script"
         exit 1
