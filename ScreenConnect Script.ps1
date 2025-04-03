@@ -22,19 +22,17 @@ CWScreenConnectThumbprint: Set at Global level in DRMM. Identifies the ScreenCon
 CWScreenConnectBaseUrl: Set at Global level in DRMM. URL of our ScreenConnect instance.
 CWScreenConnectInstallerUrl: URL of the ScreenConnect installer. Set at the Client level.
 CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Global level.
-CWScreenConnectCurrentVersion: Version of ScreenConnect we're aiming for. Set at Global level.
 SERVICE_CLIENT_LAUNCH_PARAMETERS=""$InstallerParameters"": Deprecated, supposed to pass install parameters to the MSI.
 
 #>
 write-host "Starting script"
 # === SETTING AND ENUMERATING VARIABLES === #
-write-host "Version 4.0" # Reported to make sure DRMM is using the current version
+write-host "Version 4.1" # Reported to make sure DRMM is using the current version
 write-host "Variables received from DRMM"
 write-host "  Thumbprint: $env:CWScreenConnectThumbprint"
 write-host "  Base URL: $env:CWScreenConnectBaseUrl"
 write-host "  Installer URL: $env:CWScreenConnectURL"
 write-host "  UDF: $env:CWScreenConnectusrUDF"
-write-host "  Target Version: $env:CWScreenConnectCurrentVersion"
 write-host "  Action: $env:ScriptAction"
 write-host "  Script: $PSCommandPath" # So we can find the working dir for diagnostics
 $ProductName = "ScreenConnect" # Name of the software we're working with
@@ -213,13 +211,13 @@ function Upgrade-ScreenConnect {
         Write-Output "  Installed Version: $InstalledVersion"
         $InstalledVersion = (Get-Item 'C:\Program Files (x86)\ScreenConnect Client (919d3745b4e34229)\ScreenConnect.ClientService.exe').VersionInfo.FileVersion
         if ($currentStableVersion.Substring(2) -like $InstalledVersion.Substring(0, $InstalledVersion.Length - 5)) {
-            write-host "  $ProductName version ($InstalledVersion) matches target version ($env:CWScreenConnectCurrentVersion), nothing to do"
+            write-host "  $ProductName version ($InstalledVersion) matches target version ($currentStableVersion), nothing to do"
             exit 0
         } else {
-            write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($env:CWScreenConnectCurrentVersion), continuing"
+            write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($currentStableVersion), continuing"
         }
     } else {
-        Write-Output "No stable version found. Exiting script."
+        Write-Output "  No stable version found. Exiting script."
         exit 0
     }
 
