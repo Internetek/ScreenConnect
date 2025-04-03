@@ -198,12 +198,31 @@ function Upgrade-ScreenConnect {
     # Check if upgrade needed
     write-host "  Checking version"
     $InstalledVersion = (Get-Item 'C:\Program Files (x86)\ScreenConnect Client (919d3745b4e34229)\ScreenConnect.ClientService.exe').VersionInfo.FileVersion
-    if ($env:CWScreenConnectCurrentVersion -eq $InstalledVersion) {
-        write-host "  $ProductName version ($InstalledVersion) matches target version ($env:CWScreenConnectCurrentVersion), nothing to do"
-        exit 0
+    # Pulling version from ScreenConnect website
+    $url = "https://docs.connectwise.com/ScreenConnect_Documentation/ScreenConnect_release_notes"
+    # Download the HTML content of the page
+    $htmlContent = Invoke-WebRequest -Uri $url -UseBasicParsing
+    # Define the regex pattern to match the version format
+    $pattern = "\b\d{4}\.\d{1,2}\.\d{1,2}\b"
+    # Search for the pattern in the HTML content
+    $matches = [regex]::Matches($htmlContent.Content, $pattern)
+    # Extract the most current stable version (assuming the first match is the most current)
+    if ($matches.Count -gt 0) {
+        $currentStableVersion = $matches.Value
+        Write-Output "  Current Stable Version: $currentStableVersion"
+        Write-Output "  Installed Version: $InstalledVersion"
+        $InstalledVersion = (Get-Item 'C:\Program Files (x86)\ScreenConnect Client (919d3745b4e34229)\ScreenConnect.ClientService.exe').VersionInfo.FileVersion
+        if ($currentStableVersion.Substring(2) -like $InstalledVersion.Substring(0, $InstalledVersion.Length - 5)) {
+            write-host "  $ProductName version ($InstalledVersion) matches target version ($env:CWScreenConnectCurrentVersion), nothing to do"
+            exit 0
+        } else {
+            write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($env:CWScreenConnectCurrentVersion), continuing"
+        }
     } else {
-        write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($env:CWScreenConnectCurrentVersion), continuing"
+        Write-Output "No stable version found. Exiting script."
+        exit 0
     }
+
     # Download install file
     DownloadInstaller
     # Stop the service to unlock the files
