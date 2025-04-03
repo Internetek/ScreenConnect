@@ -5,7 +5,7 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-4.0
+4.1
 
 .AUTHOR
 John Miller - Internetek
@@ -81,7 +81,7 @@ function DownloadInstaller {
     } catch {
         Write-Error "  Download failed: $_"
         if ($SupportedTLSversions -contains [System.Net.SecurityProtocolType]::Tls13) {
-            Write-Output "Retrying with TLS1.2"
+            Write-Output "  Retrying with TLS1.2"
             try {
                 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
                 Invoke-WebRequest -Uri $DownloadURL -OutFile $InstallerFile
