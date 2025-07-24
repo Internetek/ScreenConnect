@@ -496,7 +496,7 @@ switch ($env:ScriptAction) {
         }
     }
     "uninstall" {
-        if ($IsInstalled) {
+        if ($IsInstalled -or $IsOverrideEnabled) {
             Uninstall-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to do"
