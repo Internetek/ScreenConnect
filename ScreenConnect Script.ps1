@@ -5,7 +5,7 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-4.1
+4.2
 
 .AUTHOR
 John Miller - Internetek
@@ -105,7 +105,7 @@ function Install-ScreenConnect {
     # Calling download function, gimme files
     DownloadInstaller
     # Installing file
-    $Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
+    $Arguments = "/i $InstallerFile IGNOREOLDPRODUCTS=1 /qn /norestart /l ""$InstallerLogFile"""
     $Process = (Start-Process -FilePath "msiexec.exe" -ArgumentList $Arguments -Wait -Passthru)
     switch ($Process.ExitCode) {
         0 { Write-Host "  Install appears successful" }
@@ -172,9 +172,67 @@ function Uninstall-ScreenConnect {
     # Attempt uninstall
     write-host "  Attempting uninstall"
     try {
-        Get-Package -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" | Uninstall-Package | out-null
+		Get-Package -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" | Uninstall-Package -ErrorAction Stop | Out-Null
     } catch {
         write-host "  Failed to uninstall: $_.Exception.Message"
+		write-host "Forcing uninstall"
+		# Find the product code
+		Write-Host "  Attempting WMI removal"
+		$screenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like "ScreenConnect Client ($env:CWScreenConnectThumbprint)" }
+		if ($screenConnect) {
+			$productCode = $screenConnect.IdentifyingNumber
+			Write-Host "  Found product code: $productCode"
+
+			# Attempt to uninstall
+			Write-Host "  Attempting to uninstall using msiexec..."
+			Start-Process "msiexec.exe" -ArgumentList "/x $productCode /qn" -Wait
+		} else {
+			Write-Host "  ScreenConnect Client not found in installed products."
+		}
+		# Registry keys to remove
+		Write-Host "  Removing registry keys"
+		$registryPaths = @(
+			"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$productCode",
+			"HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$productCode",
+			"HKCU:\\Software\\ScreenConnect",
+			"HKLM:\\Software\\ScreenConnect",
+			"HKLM:\\Software\\WOW6432Node\\ScreenConnect"
+		)
+		# Removing keys
+		foreach ($path in $registryPaths) {
+			if (Test-Path $path) {
+				Write-Host "  Removing registry key: $path"
+				Remove-Item -Path $path -Recurse -Force
+			}
+		}
+		# Files to remove
+		$installDirs = @(
+			"C:\\Program Files\\ScreenConnect Client*",
+			"C:\\Program Files (x86)\\ScreenConnect Client*"
+		)
+		# Remove leftover files
+		Write-Host "  Attempting to remove files"
+		foreach ($dir in $installDirs) {
+			$resolvedDirs = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue
+			foreach ($resolvedDir in $resolvedDirs) {
+				Write-Host "  Removing directory: $($resolvedDir.FullName)"
+				Remove-Item -Path $resolvedDir.FullName -Recurse -Force
+			}
+		}
+		# Remove service
+		$regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+		Write-Host "  Attempting to remove service: $regPath"
+		try {
+			if (Test-Path $regPath) {
+				Remove-Item -Path $regPath -Recurse -Force
+				Write-Host "  Successfully removed registry key."
+			} else {
+				Write-Host "  Registry key not found: $regPath"
+			}
+		} catch {
+			Write-Host "  Failed to remove registry key."
+			Write-Host "  Error: $($_.Exception.Message)"
+		}		
     }
     # Wait for a bit to make sure uninstall completed
     sleep 15
@@ -195,7 +253,7 @@ function Upgrade-ScreenConnect {
     write-host "Starting upgrade"
     # Check if upgrade needed
     write-host "  Checking version"
-    $InstalledVersion = (Get-Item 'C:\Program Files (x86)\ScreenConnect Client (919d3745b4e34229)\ScreenConnect.ClientService.exe').VersionInfo.FileVersion
+    $InstalledVersion = (Get-Item "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\ScreenConnect.ClientService.exe").VersionInfo.FileVersion
     # Pulling version from ScreenConnect website
     $url = "https://docs.connectwise.com/ScreenConnect_Documentation/ScreenConnect_release_notes"
     # Download the HTML content of the page
@@ -209,10 +267,14 @@ function Upgrade-ScreenConnect {
         $currentStableVersion = $matches.Value
         Write-Output "  Current Stable Version: $currentStableVersion"
         Write-Output "  Installed Version: $InstalledVersion"
-        $InstalledVersion = (Get-Item 'C:\Program Files (x86)\ScreenConnect Client (919d3745b4e34229)\ScreenConnect.ClientService.exe').VersionInfo.FileVersion
+        $InstalledVersion = (Get-Item "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\ScreenConnect.ClientService.exe").VersionInfo.FileVersion
         if ($currentStableVersion.Substring(2) -like $InstalledVersion.Substring(0, $InstalledVersion.Length - 5)) {
             write-host "  $ProductName version ($InstalledVersion) matches target version ($currentStableVersion), nothing to do"
-            exit 0
+            if ($env:OverrideChecks -eq "True") {
+                write-host "  Override found, ignoring version check and continuing"
+            } else {
+                exit 0
+            }
         } else {
             write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($currentStableVersion), continuing"
         }
@@ -246,7 +308,9 @@ function Upgrade-ScreenConnect {
     catch {
         write-host "  Extraction failed, exiting script"
         write-host "  Error: $_.Exception.Message"
-        rm .\$InstallerFile # Cleaning up
+        IF ($env:OverrideChecks -eq "False") {
+            rm .\$InstallerFile # Cleaning up
+        }
         exit 1
     }
     if ((Test-Path -Path $StagingDir -ErrorAction SilentlyContinue) -eq "True") {
@@ -254,15 +318,17 @@ function Upgrade-ScreenConnect {
     } else {
         write-host "  Extraction failed, exiting script"
         write-host "  Error: $_.Exception.Message"
-        rm .\$InstallerFile # Cleaning up
+        IF ($env:OverrideChecks -eq "False") {
+            rm .\$InstallerFile # Cleaning up
+        }
         exit 1
     }
     # Copy required files to staging
     write-host "  Copying existing configuration"
-    $CopyConf = (get-location).path + '\staging\system.config'
-    Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\system.config" -Destination $CopyConf -Force
-    $CopyResource = (get-location).path + '\staging\Client.en-US.resources'
-    Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\Client.en-US.resources" -Destination $CopyResource -Force
+    #$CopyConf = (get-location).path + '\staging\system.config'
+    #Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\system.config" -Destination $CopyConf -Force
+    #$CopyResource = (get-location).path + '\staging\Client.en-US.resources'
+    #Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\Client.en-US.resources" -Destination $CopyResource -Force
     # Transform EXE
     $TransFrom = (get-location).path + '\staging\ServiceExeWithService'
     $TransTo = (get-location).path + '\staging\ScreenConnect.ClientService.exe'
@@ -311,61 +377,67 @@ function Upgrade-ScreenConnect {
     }
     # Clean up files
     write-host "  Cleaning up files"
-    Remove-Item * -Exclude *ps1 -Recurse
+    IF ($env:OverrideChecks -eq "False") {
+        Remove-Item * -Exclude *ps1 -Recurse
+    }
 }
 write-host "  Done"
 
 # === PREFLIGHT CHECKS === #
-write-host "Starting preflight checks"
-# Make sure we're working with elevated rights
-if (-not (Test-IsElevated)) {
-    write-host "  Not Admin. Please run with Administrator privileges."
-    exit 1
+if ($env:OverrideChecks -eq "True") {
+    write-host "Skipping preflight checks"
 } else {
-    write-host "  Elevated privs confirmed, continuing script"
-}
+    write-host "Starting preflight checks"
+    # Make sure we're working with elevated rights
+    if (-not (Test-IsElevated)) {
+        write-host "  Not Admin. Please run with Administrator privileges."
+        exit 1
+    } else {
+        write-host "  Elevated privs confirmed, continuing script"
+    }
 
-# Make sure we can write and delete
-try {
-    $TestWrite = New-Item -Path "test.txt" -ItemType File -ErrorAction SilentlyContinue # Hiding output to not clutter the screen
-    $TestWrite = rm test.txt -ErrorAction SilentlyContinue
-}
-catch {
-    write-host "  Unable to write or delete in the target directory, exiting script"
-    exit 1
-}
-write-host "  Able to write and delete in target directory, continuing script"
+    # Make sure we can write and delete
+    try {
+        $TestWrite = New-Item -Path "test.txt" -ItemType File -ErrorAction SilentlyContinue # Hiding output to not clutter the screen
+        $TestWrite = rm test.txt -ErrorAction SilentlyContinue
+    }
+    catch {
+        write-host "  Unable to write or delete in the target directory, exiting script"
+        exit 1
+    }
+    write-host "  Able to write and delete in target directory, continuing script"
 
-# Check if it's already installed, using service instead of uninstall because we care more about files on drive
-$IsInstalled = (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)")
-if ($IsInstalled) {
-    write-host "  $ProductName is installed"
-    $Installed = "True"
-} else {
-    write-host "  $ProductName is not installed"
-    $Installed = "False"
+    # Check if it's already installed, using service instead of uninstall because we care more about files on drive
+    $IsInstalled = (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)")
+    if ($IsInstalled) {
+        write-host "  $ProductName is installed"
+        $Installed = "True"
+    } else {
+        write-host "  $ProductName is not installed"
+        $Installed = "False"
+    }
+    write-host "  Done"
 }
-write-host "  Done"
 
 # === ACTIONS === #
 write-host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
-        if ($Installed -eq "True") {
+        if ($Installed -eq "True" -and $env:OverrideChecks -eq "False") {
             Write-Output "  $ProductName already installed, nothing to do"
         } else {
             Install-ScreenConnect
         }
     }
     "uninstall" {
-        if ($Installed -eq "True") {
+        if ($Installed -eq "True" -or $env:OverrideChecks -eq "True") {
             Uninstall-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to do"
         }
     }
     "upgrade" {
-        if ($Installed -eq "True") {
+        if ($Installed -eq "True" -or $env:OverrideChecks -eq "True") {
             Upgrade-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to upgrade"
