@@ -5,10 +5,11 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-4.1
+5.0
 
-.AUTHOR
+.AUTHORS
 John Miller - Internetek
+Caleb Schmetzer - Internetek
 
 .RESOURCES
 https://www.reddit.com/r/ConnectWiseControl/comments/vwut4k/silently_deploy_the_connectwise_control_agent/
@@ -22,12 +23,10 @@ CWScreenConnectThumbprint: Set at Global level in DRMM. Identifies the ScreenCon
 CWScreenConnectBaseUrl: Set at Global level in DRMM. URL of our ScreenConnect instance.
 CWScreenConnectInstallerUrl: URL of the ScreenConnect installer. Set at the Client level.
 CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Global level.
-SERVICE_CLIENT_LAUNCH_PARAMETERS=""$InstallerParameters"": Deprecated, supposed to pass install parameters to the MSI.
-
 #>
 Write-Host "Starting script"
 # === SETTING AND ENUMERATING VARIABLES === #
-Write-Host "Version 4.1" # Reported to make sure DRMM is using the current version
+Write-Host "Version 5.0" # Reported to make sure DRMM is using the current version
 Write-Host "Variables received from DRMM"
 Write-Host "  Thumbprint: $env:CWScreenConnectThumbprint"
 Write-Host "  Base URL: $env:CWScreenConnectBaseUrl"
@@ -130,7 +129,7 @@ function Download-Installer {
 # Install action
 function Install-ScreenConnect {
     Write-Host "Starting install"
-    # Calling download function, gimme files
+    # Calling download function
     Download-Installer
     # Installing file
     $Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
@@ -197,70 +196,68 @@ function Uninstall-ScreenConnect {
     try {
         Get-Package -Name $ServiceName | Uninstall-Package -ErrorAction Stop | Out-Null
     } catch {
-        Write-Host "  Failed to uninstall: $_.Exception.Message"
-		Write-Host "Forcing uninstall"
-		
-		# Find the product code 
-		Write-Host "  Attempting WMI removal"
-		$ScreenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like $ServiceName }
-		
-		if ($ScreenConnect) {
-			$ProductCode = $ScreenConnect.IdentifyingNumber
-			Write-Host "  Found product code: $ProductCode"
+        Write-Host "  Failed to uninstall gracefully: $_.Exception.Message"
+		if ($IsOverrideEnabled) {
+			Write-Host "Forcing uninstall"
+			# Find the product code and attempt WMI removal
+			Write-Host "  Attempting WMI removal"
+			$ScreenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like $ServiceName }
+			if ($ScreenConnect) {
+				$ProductCode = $ScreenConnect.IdentifyingNumber
+				Write-Host "  Found product code: $ProductCode"
 
-			# Attempt to uninstall
-			Write-Host "  Attempting to uninstall using msiexec..."
-			Start-Process "msiexec.exe" -ArgumentList "/x $ProductCode /qn" -Wait
-		} else {
-			Write-Host "  ScreenConnect Client not found in installed products."
-		}
-		Write-Host "  Forcing removal of files"
-		# Registry keys to remove
-		$RegistryPaths = @(
-			"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
-			"HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
-			"HKCU:\\Software\\ScreenConnect",
-			"HKLM:\\Software\\ScreenConnect",
-			"HKLM:\\Software\\WOW6432Node\\ScreenConnect"
-		)
-		# Removing keys
-		foreach ($Path in $RegistryPaths) {
-			if (Test-Path $Path) {
-				Write-Host "  Removing registry key: $Path"
-				Remove-Item -Path $Path -Recurse -Force
-			}
-		}
-		
-		# Files to remove
-		$InstallDirs = @(
-			"C:\\Program Files\\ScreenConnect Client*",
-			"C:\\Program Files (x86)\\ScreenConnect Client*"
-		)
-		
-		# Remove leftover files
-		foreach ($Dir in $InstallDirs) {
-			$ResolvedDirs = Get-ChildItem -Path $Dir -Directory -ErrorAction SilentlyContinue
-			foreach ($ResolvedDir in $ResolvedDirs) {
-				Write-Host "  Removing directory: $($ResolvedDir.FullName)"
-				Remove-Item -Path $ResolvedDir.FullName -Recurse -Force
-			}
-		}
-		
-		# Remove service
-		$RegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-		Write-Host "  Attempting to remove service: $RegPath"
-		try {
-			if (Test-Path $RegPath) {
-				Remove-Item -Path $RegPath -Recurse -Force
-				Write-Host "  Successfully removed registry key."
+				# Attempt to uninstall
+				Write-Host "  Attempting to uninstall using msiexec..."
+				Start-Process "msiexec.exe" -ArgumentList "/x $ProductCode /qn" -Wait
 			} else {
-				Write-Host "  Registry key not found: $RegPath"
+				Write-Host "  ScreenConnect Client not found in installed products."
 			}
-		} catch {
-			Write-Host "  Failed to remove registry key."
-			Write-Host "  Error: $($_.Exception.Message)"
-		}	
-		
+			Write-Host "  Forcing removal of files"
+			# Registry keys to remove
+			$RegistryPaths = @(
+				"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
+				"HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
+				"HKCU:\\Software\\ScreenConnect",
+				"HKLM:\\Software\\ScreenConnect",
+				"HKLM:\\Software\\WOW6432Node\\ScreenConnect"
+			)
+			# Removing keys
+			foreach ($Path in $RegistryPaths) {
+				if (Test-Path $Path) {
+					Write-Host "  Removing registry key: $Path"
+					Remove-Item -Path $Path -Recurse -Force
+				}
+			}
+			# Files to remove
+			$InstallDirs = @(
+				"C:\\Program Files\\ScreenConnect Client*",
+				"C:\\Program Files (x86)\\ScreenConnect Client*"
+			)
+			# Remove leftover files
+			foreach ($Dir in $InstallDirs) {
+				$ResolvedDirs = Get-ChildItem -Path $Dir -Directory -ErrorAction SilentlyContinue
+				foreach ($ResolvedDir in $ResolvedDirs) {
+					Write-Host "  Removing directory: $($ResolvedDir.FullName)"
+					Remove-Item -Path $ResolvedDir.FullName -Recurse -Force
+				}
+			}
+			# Remove service
+			$RegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+			Write-Host "  Attempting to remove service: $RegPath"
+			try {
+				if (Test-Path $RegPath) {
+					Remove-Item -Path $RegPath -Recurse -Force
+					Write-Host "  Successfully removed registry key."
+				} else {
+					Write-Host "  Registry key not found: $RegPath"
+				}
+			} catch {
+				Write-Host "  Failed to remove registry key."
+				Write-Host "  Error: $($_.Exception.Message)"
+			}
+		} else {
+			Write-Host "  Set Override to attempt force uninstallation"
+		}
     }
     # Wait for a bit to make sure uninstall completed
     sleep 15
@@ -451,13 +448,11 @@ function Upgrade-ScreenConnect {
     if (-not $IsOverrideEnabled) {
         Remove-Item * -Exclude *ps1 -Recurse
     }
+	Write-Host "  Done"
 }
-Write-Host "  Done"
-
-
-$IsInstalled = false 
 
 # === PREFLIGHT CHECKS === #
+$IsInstalled = false # Initializing variable
 if ($IsOverrideEnabled) {
     Write-Host "Skipping preflight checks"
 } else {
