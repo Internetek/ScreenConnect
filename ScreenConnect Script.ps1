@@ -452,7 +452,6 @@ function Upgrade-ScreenConnect {
 }
 
 # === PREFLIGHT CHECKS === #
-$IsInstalled = false # Initializing variable
 if ($IsOverrideEnabled) {
     Write-Host "Skipping preflight checks"
 } else {
