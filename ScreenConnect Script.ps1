@@ -5,7 +5,7 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-4.2
+4.1
 
 .AUTHOR
 John Miller - Internetek
@@ -25,66 +25,94 @@ CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Gl
 SERVICE_CLIENT_LAUNCH_PARAMETERS=""$InstallerParameters"": Deprecated, supposed to pass install parameters to the MSI.
 
 #>
-write-host "Starting script"
+Write-Host "Starting script"
 # === SETTING AND ENUMERATING VARIABLES === #
-write-host "Version 4.1" # Reported to make sure DRMM is using the current version
-write-host "Variables received from DRMM"
-write-host "  Thumbprint: $env:CWScreenConnectThumbprint"
-write-host "  Base URL: $env:CWScreenConnectBaseUrl"
-write-host "  Installer URL: $env:CWScreenConnectURL"
-write-host "  UDF: $env:CWScreenConnectusrUDF"
-write-host "  Action: $env:ScriptAction"
-write-host "  Script: $PSCommandPath" # So we can find the working dir for diagnostics
+Write-Host "Version 4.1" # Reported to make sure DRMM is using the current version
+Write-Host "Variables received from DRMM"
+Write-Host "  Thumbprint: $env:CWScreenConnectThumbprint"
+Write-Host "  Base URL: $env:CWScreenConnectBaseUrl"
+Write-Host "  Installer URL: $env:CWScreenConnectURL"
+Write-Host "  UDF: $env:CWScreenConnectusrUDF"
+Write-Host "  Action: $env:ScriptAction"
+Write-Host "  Script: $PSCommandPath" # So we can find the working dir for diagnostics
 $ProductName = "ScreenConnect" # Name of the software we're working with
 $InstallerFile = "Internetek.ClientSetup.msi" # Generic name so we can call it in the script
 $InstallerLogFile = "InstallLog.txt" # Dumps the install log so we can see what went wrong
-$DownloadURL = $env:CWScreenConnectURL # Changing specific to generic for DownloadInstaller function
+$DownloadUrl = $env:CWScreenConnectURL # Changing specific to generic for Download-Installer function
+$IsOverrideEnabled = $env:OverrideChecks -eq "True" # Converts override environ variable into a boolean
+$InstallBasePath = "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)" # Base directory path for ScreenConnect install
+$ServiceName = "ScreenConnect Client ($env:CWScreenConnectThumbprint)" # Service name for ScreenConnect instance
 
 # === FUNCTIONS === #
-write-host "Setting functions"
+Write-Host "Setting functions"
 # Checks if we're working with elevated credentials
 function Test-IsElevated {
-    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object System.Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+    $CurrentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $Principal = New-Object System.Security.Principal.WindowsPrincipal($CurrentUser)
+    return $Principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+# Checks if ScreenConnect has been installed 
+function Test-IsScreenConnectInstalled {
+	return Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+}
+
+# Stops ScreenConnect service and reports result
+function Stop-SCService {
+	try {
+		Stop-Service $ServiceName
+		$StopService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+		return ($StopService.Status -ne 'Running') 
+	} catch {
+		Write-Host "  Couldn't stop service: $($_.Exception.Message)"
+		return $false
+    }
 }
 
 # Creates a JoinLink in DRMM under the provided UDF
-function CreateJoinLink {
+function Create-JoinLink {
     $null = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)" -Name ImagePath).ImagePath -Match '(&s=[a-f0-9\-]*)'
-    $GUID = $Matches[0] -replace '&s='
-    $apiLaunchUrl= "$($env:CWScreenConnectBaseUrl)" + "Host#Access///" + $GUID + "/Join"
-    New-ItemProperty -Path "HKLM:\Software\CentraStage" -Name "Custom$env:usrUDF" -PropertyType String -Value $apiLaunchUrl -force | out-null
-    write-host "  UDF written to UDF#$env:CWScreenConnectusrUDF."
+    $Guid = $Matches[0] -replace '&s='
+    $ApiLaunchUrl= "$($env:CWScreenConnectBaseUrl)" + "Host#Access///" + $Guid + "/Join"
+    New-ItemProperty -Path "HKLM:\Software\CentraStage" -Name "Custom$env:CWScreenConnectusrUDF" -PropertyType String -Value $ApiLaunchUrl -force | out-null
+    Write-Host "  UDF written to UDF#$env:CWScreenConnectusrUDF."
+}
+
+# Sets the TLS version based on what the endpoint supports
+function Set-TlsVersion {
+	$SupportedTlsVersions = [enum]::GetValues([System.Net.SecurityProtocolType])
+    if ($SupportedTlsVersions -contains [System.Net.SecurityProtocolType]::Tls13) {
+        Write-Host "  Using TLS1.3"
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls13 -bor [System.Net.SecurityProtocolType]::Tls12
+		return [System.Net.SecurityProtocolType]::Tls13
+    } elseif ($SupportedTlsVersions -contains [System.Net.SecurityProtocolType]::Tls12) {
+        Write-Host "  Using TLS1.2"
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+		return [System.Net.SecurityProtocolType]::Tls12
+    } else {
+        Write-Warning "  TLS 1.2 or TLS 1.3 isn't supported on this system. This download may fail!"
+		return $null
+    }
 }
 
 # Downloader
-function DownloadInstaller {
-    write-host "  Downloading install file"
-    # Which TLS versions does the endpoint support?
-    $SupportedTLSversions = [enum]::GetValues([System.Net.SecurityProtocolType])
-    if ($SupportedTLSversions -contains [System.Net.SecurityProtocolType]::Tls13) {
-        Write-Output "  Using TLS1.3"
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls13 -bor [System.Net.SecurityProtocolType]::Tls12
-    } elseif ($SupportedTLSversions -contains [System.Net.SecurityProtocolType]::Tls12) {
-        Write-Output "  Using TLS1.2"
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-    } else {
-        Write-Warning "  TLS 1.2 or TLS 1.3 isn't supported on this system. This download may fail!"
-    }
+function Download-Installer {
+    Write-Host "  Downloading install file"
+	$PrimaryTls = Set-TlsVersion
+	
     # Download the file
     try {
-        Invoke-WebRequest -Uri $DownloadURL -OutFile $InstallerFile
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $InstallerFile
         if (-not (Test-Path -Path $InstallerFile)) {
             throw "  File download failed"
         }
     } catch {
         Write-Error "  Download failed: $_"
-        if ($SupportedTLSversions -contains [System.Net.SecurityProtocolType]::Tls13) {
+        if ($PrimaryTls -eq [System.Net.SecurityProtocolType]::Tls13) {
             Write-Output "  Retrying with TLS1.2"
             try {
                 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-                Invoke-WebRequest -Uri $DownloadURL -OutFile $InstallerFile
+                Invoke-WebRequest -Uri $DownloadUrl -OutFile $InstallerFile
                 if (-not (Test-Path -Path $InstallerFile)) {
                     throw "  File download failed on second attempt"
                 }
@@ -101,51 +129,51 @@ function DownloadInstaller {
 
 # Install action
 function Install-ScreenConnect {
-    write-host "Starting install"
+    Write-Host "Starting install"
     # Calling download function, gimme files
-    DownloadInstaller
+    Download-Installer
     # Installing file
-    $Arguments = "/i $InstallerFile IGNOREOLDPRODUCTS=1 /qn /norestart /l ""$InstallerLogFile"""
+    $Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
     $Process = (Start-Process -FilePath "msiexec.exe" -ArgumentList $Arguments -Wait -Passthru)
     switch ($Process.ExitCode) {
         0 { Write-Host "  Install appears successful" }
         3010 { Write-Host "  Install appears successful. Reboot required to complete installation" }
         1641 { Write-Host "  Install appears successful. Installer has initiated a reboot" }
         default {
-            write-host "  Exit code does not indicate success, dumping log:"
-            write-host "  +++++++++++++++++++++++++++++++++"
+            Write-Host "  Exit code does not indicate success, dumping log:"
+            Write-Host "  +++++++++++++++++++++++++++++++++"
             Get-Content $InstallerLogFile -ErrorAction SilentlyContinue | Select-Object -Last 50 | Write-Host
-            write-host "  +++++++++++++++++++++++++++++++++"
+            Write-Host "  +++++++++++++++++++++++++++++++++"
         }
     }
     # Delete install file so we don't clutter up the drive
-    write-host "Cleaning up"
+    Write-Host "Cleaning up"
     try {
         rm .\$InstallerFile -ErrorAction Stop
-        write-host "  File deleted"
+        Write-Host "  File deleted"
     } catch {
-        write-host "  Failed to delete file" 
-        write-host " " $_.Exception.Message
+        Write-Host "  Failed to delete file" 
+        Write-Host " " $_.Exception.Message
     }
     if ($Process.ExitCode -ne 0) {
-        write-host "Install appears to have failed, exiting script"
+        Write-Host "Install appears to have failed, exiting script"
         exit 1
     }
     # Make sure it started
-    write-host "Checking install success"
+    Write-Host "Checking install success"
     # Get service status
-    Write-host "  Getting Service status"
-    $StartService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
-    If ($StartService.length -gt 0) {
-        If ($StartService.Status -eq 'Running') {
-            Write-host "  Service exists and is started"
+    Write-Host "  Getting Service status"
+    $StartService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($StartService.length -gt 0) {
+        if ($StartService.Status -eq 'Running') {
+            Write-Host "  Service exists and is started"
         } else {
-            write-host "  Service exists but is not started, attempting to start service"
-            Start-Service "ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+            Write-Host "  Service exists but is not started, attempting to start service"
+            Start-Service $ServiceName
         }
-        write-host "Creating link in UDF"
+        Write-Host "Creating link in UDF"
         # Writing link to DRRM UDF
-        CreateJoinLink
+        Create-JoinLink
     } else {
         Write-Host "  Service doesn't exist, exiting script with error"
         exit 1
@@ -154,246 +182,292 @@ function Install-ScreenConnect {
 
 # Uninstall action
 function Uninstall-ScreenConnect {
-    write-host "Starting uninstall"
-    write-host "  Stopping service"
-    # Stopping service, supposed to help with uninstall
-    try {
-        Stop-Service "ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-    } catch {
-        write-host "  Couldn't stop service: $_.Exception.Message"
-    }
-    # Reporting if it worked
-    $StopService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
-    If ($StopService.Status -ne 'Running') {
-        Write-host "  Service has stopped"
-    } else {
-        write-host "  Service is still running"
-    }
+    Write-Host "Starting uninstall"
+    Write-Host "  Stopping service"
+   
+	# Stopping service, supposed to help with uninstall
+	if (Stop-SCService) {
+		Write-Host "  Service has stopped"
+	} else { 
+		Write-Host "  Service is still running"
+	}
+	
     # Attempt uninstall
-    write-host "  Attempting uninstall"
+    Write-Host "  Attempting uninstall"
     try {
-		Get-Package -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" | Uninstall-Package -ErrorAction Stop | Out-Null
+        Get-Package -Name $ServiceName | Uninstall-Package -ErrorAction Stop | Out-Null
     } catch {
-        write-host "  Failed to uninstall: $_.Exception.Message"
-		write-host "Forcing uninstall"
-		# Find the product code
+        Write-Host "  Failed to uninstall: $_.Exception.Message"
+		Write-Host "Forcing uninstall"
+		
+		# Find the product code 
 		Write-Host "  Attempting WMI removal"
-		$screenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like "ScreenConnect Client ($env:CWScreenConnectThumbprint)" }
-		if ($screenConnect) {
-			$productCode = $screenConnect.IdentifyingNumber
-			Write-Host "  Found product code: $productCode"
+		$ScreenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like $ServiceName }
+		
+		if ($ScreenConnect) {
+			$ProductCode = $ScreenConnect.IdentifyingNumber
+			Write-Host "  Found product code: $ProductCode"
 
 			# Attempt to uninstall
 			Write-Host "  Attempting to uninstall using msiexec..."
-			Start-Process "msiexec.exe" -ArgumentList "/x $productCode /qn" -Wait
+			Start-Process "msiexec.exe" -ArgumentList "/x $ProductCode /qn" -Wait
 		} else {
 			Write-Host "  ScreenConnect Client not found in installed products."
 		}
+		Write-Host "  Forcing removal of files"
 		# Registry keys to remove
-		Write-Host "  Removing registry keys"
-		$registryPaths = @(
-			"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$productCode",
-			"HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$productCode",
+		$RegistryPaths = @(
+			"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
+			"HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$ProductCode",
 			"HKCU:\\Software\\ScreenConnect",
 			"HKLM:\\Software\\ScreenConnect",
 			"HKLM:\\Software\\WOW6432Node\\ScreenConnect"
 		)
 		# Removing keys
-		foreach ($path in $registryPaths) {
-			if (Test-Path $path) {
-				Write-Host "  Removing registry key: $path"
-				Remove-Item -Path $path -Recurse -Force
+		foreach ($Path in $RegistryPaths) {
+			if (Test-Path $Path) {
+				Write-Host "  Removing registry key: $Path"
+				Remove-Item -Path $Path -Recurse -Force
 			}
 		}
+		
 		# Files to remove
-		$installDirs = @(
+		$InstallDirs = @(
 			"C:\\Program Files\\ScreenConnect Client*",
 			"C:\\Program Files (x86)\\ScreenConnect Client*"
 		)
+		
 		# Remove leftover files
-		Write-Host "  Attempting to remove files"
-		foreach ($dir in $installDirs) {
-			$resolvedDirs = Get-ChildItem -Path $dir -Directory -ErrorAction SilentlyContinue
-			foreach ($resolvedDir in $resolvedDirs) {
-				Write-Host "  Removing directory: $($resolvedDir.FullName)"
-				Remove-Item -Path $resolvedDir.FullName -Recurse -Force
+		foreach ($Dir in $InstallDirs) {
+			$ResolvedDirs = Get-ChildItem -Path $Dir -Directory -ErrorAction SilentlyContinue
+			foreach ($ResolvedDir in $ResolvedDirs) {
+				Write-Host "  Removing directory: $($ResolvedDir.FullName)"
+				Remove-Item -Path $ResolvedDir.FullName -Recurse -Force
 			}
 		}
+		
 		# Remove service
-		$regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-		Write-Host "  Attempting to remove service: $regPath"
+		$RegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+		Write-Host "  Attempting to remove service: $RegPath"
 		try {
-			if (Test-Path $regPath) {
-				Remove-Item -Path $regPath -Recurse -Force
+			if (Test-Path $RegPath) {
+				Remove-Item -Path $RegPath -Recurse -Force
 				Write-Host "  Successfully removed registry key."
 			} else {
-				Write-Host "  Registry key not found: $regPath"
+				Write-Host "  Registry key not found: $RegPath"
 			}
 		} catch {
 			Write-Host "  Failed to remove registry key."
 			Write-Host "  Error: $($_.Exception.Message)"
-		}		
+		}	
+		
     }
     # Wait for a bit to make sure uninstall completed
     sleep 15
     # Check if it shows installed
-    $IsInstalled = (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)")
+    $IsInstalled = Test-IsScreenConnectInstalled
     if ($IsInstalled) {
-        write-host "  Uninstall appears unsuccessful"
+        Write-Host "  Uninstall appears unsuccessful"
         # Restarting service so we can log in if needed but hiding it so it doesn't clutter the log
-        $Arguments = "/c Start-Service ""ScreenConnect Client ($env:CWScreenConnectThumbprint)"""
+        $Arguments = "/c Start-Service `"$ServiceName`""
         $Process = Start-Process -Wait cmd -ArgumentList $Arguments -PassThru
     } else {
-        write-host "  Uninstall appears successful"
+        Write-Host "  Uninstall appears successful"
     }
 }
 
 # Upgrade action
 function Upgrade-ScreenConnect {
-    write-host "Starting upgrade"
+    Write-Host "Starting upgrade"
     # Check if upgrade needed
-    write-host "  Checking version"
-    $InstalledVersion = (Get-Item "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\ScreenConnect.ClientService.exe").VersionInfo.FileVersion
-    # Pulling version from ScreenConnect website
-    $url = "https://docs.connectwise.com/ScreenConnect_Documentation/ScreenConnect_release_notes"
-    # Download the HTML content of the page
-    $htmlContent = Invoke-WebRequest -Uri $url -UseBasicParsing
-    # Define the regex pattern to match the version format
-    $pattern = "\b\d{4}\.\d{1,2}\.\d{1,2}\b"
-    # Search for the pattern in the HTML content
-    $matches = [regex]::Matches($htmlContent.Content, $pattern)
-    # Extract the most current stable version (assuming the first match is the most current)
-    if ($matches.Count -gt 0) {
-        $currentStableVersion = $matches.Value
-        Write-Output "  Current Stable Version: $currentStableVersion"
-        Write-Output "  Installed Version: $InstalledVersion"
-        $InstalledVersion = (Get-Item "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\ScreenConnect.ClientService.exe").VersionInfo.FileVersion
-        if ($currentStableVersion.Substring(2) -like $InstalledVersion.Substring(0, $InstalledVersion.Length - 5)) {
-            write-host "  $ProductName version ($InstalledVersion) matches target version ($currentStableVersion), nothing to do"
-            if ($env:OverrideChecks -eq "True") {
-                write-host "  Override found, ignoring version check and continuing"
-            } else {
-                exit 0
-            }
-        } else {
-            write-host "  $ProductName version ($InstalledVersion) doesn't match target version ($currentStableVersion), continuing"
-        }
-    } else {
-        Write-Output "  No stable version found. Exiting script."
-        exit 0
-    }
-
+    Write-Host "  Checking version"
+	
+	$ScreenConnectExePath = Join-Path $InstallBasePath "ScreenConnect.ClientService.exe"
+	
+	# Make sure ScreenConnect executable exists before trying to retrieve the version
+	if (Test-Path $ScreenConnectExePath) {
+		$InstalledVersionString = (Get-Item $ScreenConnectExePath).VersionInfo.FileVersion
+		$InstalledVersion = [version]$InstalledVersionString
+	} else {
+		Write-Host "  Unable to find executable path, exiting"
+		exit 1
+	}	
+    
+	if ($IsOverrideEnabled) {
+		Write-Host "  Override found, ignoring version check and continuing"
+	} else {
+		# Pulling version from ScreenConnect website
+		$Url = "https://docs.connectwise.com/ScreenConnect_Documentation/ScreenConnect_release_notes"
+		
+		# Download the HTML content of the page
+		try {
+			$HtmlContent = Invoke-WebRequest -Uri $Url -UseBasicParsing -ErrorAction Stop
+		} catch { 
+			Write-Host "  Failed to retrieve version release notes: $($_.Exception.Message)"
+			exit 1
+		}
+		
+		if (-not $HtmlContent.Content) {
+			Write-Host "  Release notes content is empty, potential network or parsing issue"
+			exit 1
+		}
+		
+		# Define the regex pattern to match the version format
+		$Pattern = "\b\d{4}\.\d{1,2}\.\d{1,2}\b"
+		
+		# Search for the pattern in the HTML content
+		$Matches = [regex]::Matches($HtmlContent.Content, $Pattern)
+		
+		# Extract the most current stable version 
+		if ($Matches.Count -gt 0) {
+			
+			$VersionObjects = $Matches | ForEach-Object { [version]$_.Value }
+			$CurrentStableVersion = ($VersionObjects | Sort-Object -Descending)[0]
+			
+			Write-Output "  Current Stable Version: $CurrentStableVersion"
+			Write-Output "  Installed Version: $InstalledVersion"
+		   
+			if ($InstalledVersion -eq $CurrentStableVersion) {
+				Write-Host "  $ProductName version ($InstalledVersion) matches target version ($CurrentStableVersion), nothing to do"
+				exit 0
+			} else {
+				Write-Host "  $ProductName version ($InstalledVersion) doesn't match target version ($CurrentStableVersion), continuing"
+			}
+		} else {
+			Write-Output "  No stable version found. Exiting script."
+			exit 0
+		}
+	}	
+	
+	
     # Download install file
-    DownloadInstaller
+    Download-Installer
+   
     # Stop the service to unlock the files
-    write-host "  Stopping service before update"
-    try {
-        Stop-Service "ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-    } catch {
-        write-host "  Couldn't stop service: $_.Exception.Message"
-    }
-    $StopService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
-    If ($StopService.Status -ne 'Running') {
-        write-host "  Service has stopped, continuing"
-    } else {
-        write-host "  Service is still running, exiting script"
-        exit 1
-    }
+    Write-Host "  Stopping service before update"
+	
+	if (Stop-SCService) {
+		Write-Host "  Service has stopped, continuing"
+	} else { 
+		Write-Host "  Service is still running, exiting script"
+		exit 1
+	}
+	
     # Extract files from MSI
-    write-host "  Extracting upgrade files"
-    $StagingDir = (get-location).path +'\staging'
+    Write-Host "  Extracting upgrade files"
+	$ScriptDir = (Get-Location).path 
+    $StagingDir = Join-Path $ScriptDir 'staging'
+	$SevenZipPath = Join-Path $ScriptDir '7z.exe'
+	$InstallerPath = Join-Path $ScriptDir $InstallerFile 
+	
+	if (-not (Test-Path $SevenZipPath)) {
+		Write-Host "  7z.exe not found in $SevenZipPath. Exiting script."
+		exit 1
+	}
+	
     try {
-        $ExtractFiles = .\7z.exe e .\$InstallerFile -oStaging -y -bse0 -bsp0 -bso0 # disables all output
+        $ExtractFiles = & $SevenZipPath e $InstallerPath "-o$StagingDir" -y -bse0 -bsp0 -bso0 # disables all output
     }
     catch {
-        write-host "  Extraction failed, exiting script"
-        write-host "  Error: $_.Exception.Message"
-        IF ($env:OverrideChecks -eq "False") {
+        Write-Host "  Extraction failed, exiting script"
+        Write-Host "  Error: $_.Exception.Message"
+        if (-not $IsOverrideEnabled) {
             rm .\$InstallerFile # Cleaning up
         }
         exit 1
     }
-    if ((Test-Path -Path $StagingDir -ErrorAction SilentlyContinue) -eq "True") {
-        write-host "  Extraction successful, continuing"
+    if (Test-Path -Path $StagingDir -ErrorAction SilentlyContinue)  {
+        Write-Host "  Extraction successful, continuing"
     } else {
-        write-host "  Extraction failed, exiting script"
-        write-host "  Error: $_.Exception.Message"
-        IF ($env:OverrideChecks -eq "False") {
+        Write-Host "  Extraction failed, exiting script"
+        Write-Host "  Error: $_.Exception.Message"
+        if (-not $IsOverrideEnabled) {
             rm .\$InstallerFile # Cleaning up
         }
         exit 1
     }
-    # Copy required files to staging
-    write-host "  Copying existing configuration"
-    #$CopyConf = (get-location).path + '\staging\system.config'
-    #Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\system.config" -Destination $CopyConf -Force
-    #$CopyResource = (get-location).path + '\staging\Client.en-US.resources'
-    #Copy-Item -Path "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\Client.en-US.resources" -Destination $CopyResource -Force
+    
+	# Copy required files to staging
+    Write-Host "  Copying existing configuration"
+	
+	# Currently unused, may be needed in the future
+	<#
+    $CopyConf = (Get-Location).path + '\staging\system.config'
+    Copy-Item -Path (Join-Path $InstallBasePath "system.config") -Destination $CopyConf -Force
+    $CopyResource = (Get-Location).path + '\staging\Client.en-US.resources'
+    Copy-Item -Path (Join-Path $InstallBasePath "Client.en-US.resources") -Destination $CopyResource -Force
+	#>
+	
     # Transform EXE
-    $TransFrom = (get-location).path + '\staging\ServiceExeWithService'
-    $TransTo = (get-location).path + '\staging\ScreenConnect.ClientService.exe'
+	$StagingPath = Join-Path (Get-Location) 'staging'
+    $TransFrom = Join-Path $StagingPath 'ServiceExeWithService'
+    $TransTo = 	Join-Path $StagingPath 'ScreenConnect.ClientService.exe'
     Move-Item -Path $TransFrom -Destination $TransTo
     # Copy staging to production
-    write-host "  Upgrading files"
-    $FromFolder = (get-location).path + '\staging\*'
-    $ToFolder = "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-    write-host "  Copy from $FromFolder"
-    write-host "  Upgrading $ToFolder"
+    Write-Host "  Upgrading files"
+    $FromFolder = Join-Path $StagingPath '*'
+    $ToFolder = $InstallBasePath
+    Write-Host "  Copy from $FromFolder"
+    Write-Host "  Upgrading $ToFolder"
     try {
         $CopyProcess = Copy-Item -Path $FromFolder -Destination $ToFolder -Recurse -Force -ErrorAction Stop
-        write-host "  Copy to production successful"
+        Write-Host "  Copy to production successful"
     }
     catch {
-        write-host "  Copying to production failed: $_.Exception.Message"
-        write-host "  Continuing script to recover"
+        Write-Host "  Copying to production failed: $_.Exception.Message"
+        Write-Host "  Continuing script to recover"
     }
     # Start service
-    write-host "  Restarting service"
-    Start-Service "ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+    Write-Host "  Restarting service"
+    Start-Service $ServiceName
     try {
-        $StartService = Get-Service -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)" -ErrorAction SilentlyContinue
+        $StartService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     }
     catch {
-        write-host "  Error while starting service: $_.Exception.Message"
+        Write-Host "  Error while starting service: $_.Exception.Message"
     }
-    If ($StartService.Status -eq 'Running') {
-        Write-host "  Service has started"
+    if ($StartService.Status -eq 'Running') {
+        Write-Host "  Service has started"
     } else {
-        write-host "  Service has not started: $_.Exception.Message"
+        Write-Host "  Service has not started: $_.Exception.Message"
         exit 1
     }
     # Update version in HKLM using EXE version
-    write-host "  Updating version in registry"
-    $FoundVersion = (Get-Item "C:\Program Files (x86)\ScreenConnect Client ($env:CWScreenConnectThumbprint)\ScreenConnect.ClientService.exe").VersionInfo.FileVersion
-    write-host "  Version $FoundVersion found in files"
-    $UninstallCode = (Get-Package -Name "ScreenConnect Client ($env:CWScreenConnectThumbprint)").FastPackageReference
-    write-host "  Registry entry is $UninstallCode"
+    Write-Host "  Updating version in registry"
+	$FoundVersion = (Get-Item $ScreenConnectExePath).VersionInfo.FileVersion
+
+    Write-Host "  Version $FoundVersion found in files"
+    $UninstallCode = (Get-Package -Name $ServiceName).FastPackageReference
+    Write-Host "  Registry entry is $UninstallCode"
     try { 
         $WriteReg = Set-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$UninstallCode" -Name "DisplayVersion" -Value $FoundVersion -ErrorAction Stop
-        write-host "  Version written to registry"
+        Write-Host "  Version written to registry"
     } 
     catch {
-        write-host "  Writing to registry failed"
+        Write-Host "  Writing to registry failed"
     }
     # Clean up files
-    write-host "  Cleaning up files"
-    IF ($env:OverrideChecks -eq "False") {
+    Write-Host "  Cleaning up files"
+    if (-not $IsOverrideEnabled) {
         Remove-Item * -Exclude *ps1 -Recurse
     }
 }
-write-host "  Done"
+Write-Host "  Done"
+
+
+$IsInstalled = false 
 
 # === PREFLIGHT CHECKS === #
-if ($env:OverrideChecks -eq "True") {
-    write-host "Skipping preflight checks"
+if ($IsOverrideEnabled) {
+    Write-Host "Skipping preflight checks"
 } else {
-    write-host "Starting preflight checks"
+    Write-Host "Starting preflight checks"
     # Make sure we're working with elevated rights
     if (-not (Test-IsElevated)) {
-        write-host "  Not Admin. Please run with Administrator privileges."
+        Write-Host "  Not Admin. Please run with Administrator privileges."
         exit 1
     } else {
-        write-host "  Elevated privs confirmed, continuing script"
+        Write-Host "  Elevated privs confirmed, continuing script"
     }
 
     # Make sure we can write and delete
@@ -402,42 +476,40 @@ if ($env:OverrideChecks -eq "True") {
         $TestWrite = rm test.txt -ErrorAction SilentlyContinue
     }
     catch {
-        write-host "  Unable to write or delete in the target directory, exiting script"
+        Write-Host "  Unable to write or delete in the target directory, exiting script"
         exit 1
     }
-    write-host "  Able to write and delete in target directory, continuing script"
+    Write-Host "  Able to write and delete in target directory, continuing script"
 
     # Check if it's already installed, using service instead of uninstall because we care more about files on drive
-    $IsInstalled = (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)")
+    $IsInstalled = Test-IsScreenConnectInstalled
     if ($IsInstalled) {
-        write-host "  $ProductName is installed"
-        $Installed = "True"
+        Write-Host "  $ProductName is installed"
     } else {
-        write-host "  $ProductName is not installed"
-        $Installed = "False"
+        Write-Host "  $ProductName is not installed"
     }
-    write-host "  Done"
+    Write-Host "  Done"
 }
 
 # === ACTIONS === #
-write-host "Starting action"
+Write-Host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
-        if ($Installed -eq "True" -and $env:OverrideChecks -eq "False") {
+        if ($IsInstalled -and -not $IsOverrideEnabled) {
             Write-Output "  $ProductName already installed, nothing to do"
         } else {
             Install-ScreenConnect
         }
     }
     "uninstall" {
-        if ($Installed -eq "True" -or $env:OverrideChecks -eq "True") {
+        if ($IsInstalled) {
             Uninstall-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to do"
         }
     }
     "upgrade" {
-        if ($Installed -eq "True" -or $env:OverrideChecks -eq "True") {
+        if ($IsInstalled -or $IsOverrideEnabled) {
             Upgrade-ScreenConnect
         } else {
             Write-Output "  $ProductName not installed, nothing to upgrade"
@@ -450,4 +522,4 @@ switch ($env:ScriptAction) {
 
 # === ERROR REPORTING === #
 # Not implemented
-write-host "Script completed"
+Write-Host "Script completed"
