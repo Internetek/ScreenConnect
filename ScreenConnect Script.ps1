@@ -132,7 +132,12 @@ function Install-ScreenConnect {
     # Calling download function
     Download-Installer
     # Installing file
-    $Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
+	if ($IsOverrideEnabled) {
+		Write-Host "  Override called, using MSI Transform"
+		$Arguments = "/i $InstallerFile TRANSFORMS=""InstallOverride.mst"" /qn /norestart /l ""$InstallerLogFile"""
+	} else {
+		$Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
+	}
     $Process = (Start-Process -FilePath "msiexec.exe" -ArgumentList $Arguments -Wait -Passthru)
     switch ($Process.ExitCode) {
         0 { Write-Host "  Install appears successful" }
@@ -199,7 +204,7 @@ function Uninstall-ScreenConnect {
         Write-Host "  Failed to uninstall gracefully: $_.Exception.Message"
 		if ($IsOverrideEnabled) {
 			Write-Host "Forcing uninstall"
-			# Find the product code and attempt WMI removal
+			# Find the product code and attempt MSIExec removal
 			Write-Host "  Attempting WMI removal"
 			$ScreenConnect = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like $ServiceName }
 			if ($ScreenConnect) {
