@@ -68,6 +68,23 @@ function Stop-SCService {
     }
 }
 
+# Stops ScreenConnect processes and reports result
+function Stop-SCProcesses {
+	# Get all processes that start with "ScreenConnect"
+	$processes = Get-Process | Where-Object { $_.Name -like "ScreenConnect*" }
+	# Stop each process
+	foreach ($process in $processes) {
+		try {
+			Write-Host "Stopping process: $($process.Name) (ID: $($process.Id))"
+			$StopProcess = Stop-Process -Id $process.Id -Force
+			return ($StopProcess.Status -ne 'Running') 
+		} catch {
+			Write-Host "  Couldn't stop process: $($_.Exception.Message)"
+			return $false
+		}
+	}
+}
+
 # Creates a JoinLink in DRMM under the provided UDF
 function Create-JoinLink {
     $null = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)" -Name ImagePath).ImagePath -Match '(&s=[a-f0-9\-]*)'
@@ -134,7 +151,8 @@ function Install-ScreenConnect {
     # Installing file
 	if ($IsOverrideEnabled) {
 		Write-Host "  Override called, using MSI Transform"
-		$Arguments = "/i $InstallerFile TRANSFORMS=""InstallOverride.mst"" /qn /norestart /l ""$InstallerLogFile"""
+		#$Arguments = "/i $InstallerFile TRANSFORMS=""InstallOverride.mst"" /qn /norestart /l ""$InstallerLogFile"""
+		$Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
 	} else {
 		$Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
 	}
@@ -189,11 +207,17 @@ function Uninstall-ScreenConnect {
     Write-Host "Starting uninstall"
     Write-Host "  Stopping service"
    
-	# Stopping service, supposed to help with uninstall
+	# Stopping service and processes, supposed to help with uninstall
 	if (Stop-SCService) {
 		Write-Host "  Service has stopped"
 	} else { 
 		Write-Host "  Service is still running"
+	}
+	
+	if (Stop-SCProcesses) {
+		Write-Host "  Processes have stopped"
+	} else {
+		Write-Host "  One or more processes failed to stop"
 	}
 	
     # Attempt uninstall
@@ -345,16 +369,21 @@ function Upgrade-ScreenConnect {
     # Download install file
     Download-Installer
    
-    # Stop the service to unlock the files
+    # Stop the service and processes to unlock the files
     Write-Host "  Stopping service before update"
-	
 	if (Stop-SCService) {
 		Write-Host "  Service has stopped, continuing"
 	} else { 
 		Write-Host "  Service is still running, exiting script"
 		exit 1
 	}
-	
+	if (Stop-SCProcesses) {
+		Write-Host "  Processes have stopped"
+	} else {
+		Write-Host "  One or more processes failed to stop"
+		exit 1
+	}
+
     # Extract files from MSI
     Write-Host "  Extracting upgrade files"
 	$ScriptDir = (Get-Location).path 
