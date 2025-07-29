@@ -68,22 +68,32 @@ function Stop-SCService {
     }
 }
 
-# Stops ScreenConnect processes and reports result
 function Stop-SCProcesses {
-	# Get all processes that start with "ScreenConnect"
-	$processes = Get-Process | Where-Object { $_.Name -like "ScreenConnect*" }
-	# Stop each process
-	foreach ($process in $processes) {
-		try {
-			Write-Host "Stopping process: $($process.Name) (ID: $($process.Id))"
-			$StopProcess = Stop-Process -Id $process.Id -Force
-			return ($StopProcess.Status -ne 'Running') 
-		} catch {
-			Write-Host "  Couldn't stop process: $($_.Exception.Message)"
-			return $false
-		}
-	}
+    # Get all processes that start with "ScreenConnect"
+    $Processes = Get-Process | Where-Object { $_.Name -like "ScreenConnect*" }
+    if (-not $Processes) {
+        Write-Host "  No ScreenConnect processes found."
+        return $true
+    }
+
+    $AllStopped = $true
+    foreach ($Process in $Processes) {
+        try {
+            Write-Host "  Stopping process: $($Process.Name) (ID: $($Process.Id))"
+            Stop-Process -Id $Process.Id -Force -ErrorAction Stop
+            Start-Sleep -Milliseconds 200
+            if (Get-Process -Id $Process.Id -ErrorAction SilentlyContinue) {
+                Write-Host "  Process still running after Stop-Process."
+                $AllStopped = $false
+            }
+        } catch {
+            Write-Host "  Couldn't stop process: $($_.Exception.Message)"
+            $AllStopped = $false
+        }
+    }
+    return $AllStopped
 }
+
 
 # Creates a JoinLink in DRMM under the provided UDF
 function Create-JoinLink {
