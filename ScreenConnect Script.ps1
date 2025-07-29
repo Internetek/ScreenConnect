@@ -243,13 +243,13 @@ function Uninstall-ScreenConnect {
                 $Arguments = if ($Parts.Count -ge 2) { $Parts[1] } else { "" }
     
                 # Resolve executable path from path if necessary
-                $ResolvedExe = (Get-Command $ExePath -ErrorAction SilentlyContinue)?.Source
-                if (-not $ResolvedExe) {
-                    Write-Host "  Error: Executable $ExePath not found in path. Skipping."
-                    continue
-                } else {
-                    $ExePath = $ResolvedExe
-                }
+                $Command = Get-Command $ExePath -ErrorAction SilentlyContinue
+		if ($Command) {
+		    $ExePath = $Command.Source
+		} else {
+		    Write-Host "  Error: Executable $ExePath not found in path. Skipping."
+		    continue
+		}
     
                 # Add silent flags
                 if ($ExePath -match 'msiexec.exe') {
