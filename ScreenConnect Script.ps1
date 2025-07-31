@@ -63,13 +63,18 @@ function Test-IsScreenConnectInstalled {
 
 # Stops ScreenConnect service and reports result
 function Stop-SCService {
-	try {
-		Stop-Service $ServiceName
-		$StopService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-		return ($StopService.Status -ne 'Running') 
-	} catch {
-		Write-Host "  Couldn't stop service: $($_.Exception.Message)"
-		return $false
+    try {
+        $SCServices = Get-Service | Where-Object { $_.Name -match "^ScreenConnect Client \(.+\)$" }
+        if ($SCServices) {
+            $SCServices | Stop-Service -Force -ErrorAction Stop
+            return $true
+        } else {
+            Write-Host "  No ScreenConnect Client services found."
+            return $false
+        }
+    } catch {
+        Write-Host "  Error stopping ScreenConnect services: $($_.Exception.Message)"
+        return $false
     }
 }
 
