@@ -61,6 +61,12 @@ function Test-IsScreenConnectInstalled {
     }
 }
 
+# Checks if current ScreenConnect version is installed 
+function Test-IsCurrentVersionScreenConnectInstalled {
+	return Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
+}
+
+
 # Stops ScreenConnect service and reports result
 function Stop-SCService {
     try {
@@ -463,18 +469,28 @@ function Uninstall-ScreenConnect {
 				}
 			}
 
-			# Remove service 
-			$ServiceKey = "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
-			if (Test-Path $ServiceKey) {
-				try {
-					Remove-Item -Path $ServiceKey -Recurse -Force -ErrorAction Stop
-					Write-Host "  Service registry key removed"
-				} catch {
-					Write-Host "  Failed to remove service registry key: $($_.Exception.Message)"
-				}
+			# Base registry path for services
+			$ServiceBasePath = "HKLM:\SYSTEM\CurrentControlSet\Services"
+			
+			# Find the ScreenConnect service key that starts with "ScreenConnect Client ("
+			$ServiceKey = Get-ChildItem -Path $ServiceBasePath | Where-Object {
+			    $_.PSChildName -like "ScreenConnect Client (*)"
+			} | Select-Object -First 1
+			
+			if ($ServiceKey) {
+			    $ServiceKeyPath = $ServiceKey.PSPath
+			    Write-Host "  Found service registry key: $ServiceKeyPath"
+			
+			    try {
+			        Remove-Item -Path $ServiceKeyPath -Recurse -Force -ErrorAction Stop
+			        Write-Host "  Service registry key removed"
+			    } catch {
+			        Write-Host "  Failed to remove service registry key: $($_.Exception.Message)"
+			    }
 			} else {
-				Write-Host "  Service registry key not found: $ServiceKey"
+			    Write-Host "  Service registry key not found"
 			}
+
 			
 			Start-Sleep -Seconds 5
 			$IsInstalled = Test-IsScreenConnectInstalled
