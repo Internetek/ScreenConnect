@@ -175,13 +175,13 @@ function Install-ScreenConnect {
     # Calling download function
     Download-Installer
     # Installing file
-	if ($IsOverrideEnabled) {
-		Write-Host "  Override called, using MSI Transform"
-		#$Arguments = "/i $InstallerFile TRANSFORMS=""InstallOverride.mst"" /qn /norestart /l ""$InstallerLogFile"""
-		$Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
-	} else {
-		$Arguments = "/i $InstallerFile /qn /norestart /l ""$InstallerLogFile"""
-	}
+    if ($IsOverrideEnabled) {
+        Write-Host "  Override called, using forced reinstall"
+	#$Arguments = "/i $InstallerFile TRANSFORMS=""InstallOverride.mst"" /qn /norestart /l ""$InstallerLogFile"""
+        $Arguments = "/i `"$InstallerFile`" REINSTALL=ALL REINSTALLMODE=vomus /qn /norestart /l `"$InstallerLogFile`""
+    } else {
+        $Arguments = "/i `"$InstallerFile`" /qn /norestart /l `"$InstallerLogFile`""
+    }
     $Process = (Start-Process -FilePath "msiexec.exe" -ArgumentList $Arguments -Wait -Passthru)
     switch ($Process.ExitCode) {
         0 { Write-Host "  Install appears successful" }
@@ -762,3 +762,4 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
