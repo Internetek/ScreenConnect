@@ -74,7 +74,7 @@ Install appears to have failed, exiting script
 
 **The problematic line in question is here: `Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}`**
 
-# Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
+## Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
 
 You should get an output similar to this: 
 
@@ -90,7 +90,7 @@ The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed ver
 
 > Note: In some cases you may have multiple product and compressed codes. You need to save them all.
 
-# Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. 
+## Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. 
 
 Put the product code/s you found into the `ProblemProductCodes` variable and the compressed code/s into the `ProblemCompressedCodes` variable. If you have multiple of each code, write a list using commas (with **no** spaces) in the variables. An example is shown below:
 
