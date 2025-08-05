@@ -81,6 +81,8 @@ These steps should help you rectify the issue.
 # Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
 
 You should get an output similar to this: 
+
+
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/98e2b7e8e1a6de38c6335e111edd8cf1239a8808/Guide%20Images/lingeringinstallationsearchexamples.png)
 
 Take note of these two lines:
@@ -95,6 +97,7 @@ The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed ver
 # Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. 
 
 Put the product code/s you found into the `ProblemProductCodes` variable and the compressed code/s into the `ProblemCompressedCodes` variable. If you have multiple of each code, write a list using commas (with **no** spaces) in the variables. An example is shown below:
+
 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/1500ba0978901f9659bdd6af168e113673f04c12/Guide%20Images/runproductcodefixexample.png)
 
