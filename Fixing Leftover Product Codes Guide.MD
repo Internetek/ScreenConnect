@@ -115,7 +115,7 @@ The exit code should show:
 - **Success**, or
 - **Success with reboot required**
 
-> If a reboot was required, the **Join Link may not have written correctly**. Proceed to Step #4.
+If a reboot was required, the **Join Link may not have written correctly**. Proceed to Step #4.
 
 ---
 
