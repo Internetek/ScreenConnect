@@ -32,7 +32,7 @@ Action start 16:37:07: FixupServiceArguments.
 SFXCA: Extracting custom action to temporary directory: C:\Windows\Installer\MSIA603.tmp-
 SFXCA: Binding to CLR version v4.0.30319
 Calling custom action ScreenConnect.InstallerActions!ScreenConnect.ClientInstallerActions.FixupServiceArguments
-Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}
+Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}
 Setting new values for e: Access
 Setting new values for y: Guest
 Setting new values for h: instance-iimc1o-relay.screenconnect.com
@@ -72,9 +72,17 @@ Install appears to have failed, exiting script
 
 ```
 
-**The problematic line in question is here: `Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}`**
+**The problematic line in question is here: `Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}`**
 
 These steps should help you rectify the issue.
 
-# Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. You should get an output similar to this: 
+# Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
+
+You should get an output similar to this: 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/98e2b7e8e1a6de38c6335e111edd8cf1239a8808/Guide%20Images/lingeringinstallationsearchexamples.png)
+
+*Take note of these two lines: *
+  - `Uninstall Key Found: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04} - DisplayName: ScreenConnect Client (919d3745b4e34229)`
+  - `Installer Product Found: D0FCF26B5C9D24F4FA1CFE3896DFD040 - ProductName: ScreenConnect Client (919d3745b4e34229)`
+
+
