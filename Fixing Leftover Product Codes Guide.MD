@@ -91,6 +91,8 @@ The Uninstall Key **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** is the problematic 
 The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed version of the above product code. Write down both the product code and it's compressed version somewhere. You will need them for the next step.
 > Note: In some cases you may have multiple product and compressed codes. You need to save them all.
 
-# Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. Put the product code/s you found into the `ProblemProductCodes` variable and the compressed code/s into the `ProblemCompressedCodes` variable. If you have multiple of each code, write a list using commas (with **no** spaces) in the variables.
+# Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. 
+
+Put the product code/s you found into the `ProblemProductCodes` variable and the compressed code/s into the `ProblemCompressedCodes` variable. If you have multiple of each code, write a list using commas (with **no** spaces) in the variables.
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/1500ba0978901f9659bdd6af168e113673f04c12/Guide%20Images/runproductcodefixexample.png)
 
