@@ -32,7 +32,7 @@ Action start 16:37:07: FixupServiceArguments.
 SFXCA: Extracting custom action to temporary directory: C:\Windows\Installer\MSIA603.tmp-
 SFXCA: Binding to CLR version v4.0.30319
 Calling custom action ScreenConnect.InstallerActions!ScreenConnect.ClientInstallerActions.FixupServiceArguments
-**Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}**
+*Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}*
 Setting new values for e: Access
 Setting new values for y: Guest
 Setting new values for h: instance-iimc1o-relay.screenconnect.com
