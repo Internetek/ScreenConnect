@@ -9,6 +9,17 @@ uninstall keys, installer product codes, service keys, and leftover installation
 .AUTHORS
 Caleb Schmetzer - Internetek
 
+.VARIABLES
+$env:ProblemProductCodes: Comma-separated list of problematic problem codes to remove
+			  ( ex: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54},{F5708C2F-B665-C91F-18BE-06B8AE43E565} )
+
+$env:ProblemCompressedCodes: Comma-separated list of problematic compressed codes to remove
+			  ( ex: 625CDFADC90EA164F9D86D9B3A5CFB45,F2C8075F566BF19C81EB608BEA345E56 )
+
+"{DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54},{F5708C2F-B665-C91F-18BE-06B8AE43E565}"
+$env:ProblemCompressedCodes = "625CDFADC90EA164F9D86D9B3A5CFB45,F2C8075F566BF19C81EB608BEA345E56"
+
+
 .NOTES
 Meant for use with LingeringInstallationsSearch
 You may have to use it and add product/compressed codes from there if this script
@@ -18,88 +29,91 @@ doesn't cover the codes for the versions you are trying to clean up
 function Remove-ScreenConnectTraces {
     Write-Host "- Starting ScreenConnect Cleanup"
 
-    $KnownProductCodes = @(
-        "{DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}",
-        "{F5708C2F-B665-C91F-18BE-06B8AE43E565}",
-	"{9EEBA193-E8DA-0453-8638-3DDC04F4B8BE}",
- 	"{D88B4423-4E69-D034-A875-73EB884B0F94}",
-  	"{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}"
-    )
+    # Read product codes from environment variables (comma-separated)
+    $KnownProductCodes = @()
+    if ($env:ProblemProductCodes) {
+        $KnownProductCodes = $env:ProblemProductCodes -split ',' | ForEach-Object { $_.Trim() }
+    } else {
+        Write-Host "- No ProblemProductCodes env variable found or empty, skipping uninstall key removal"
+    }
 
-    $CompressedCodes = @(
-        "625CDFADC90EA164F9D86D9B3A5CFB45",  # {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}
-        "F2C8075F566BF19C81EB608BEA345E56",  # {F5708C2F-B665-C91F-18BE-06B8AE43E565}
-	"391ABEE9AD8E35406883D3CD404F8BEB",  # {9EEBA193-E8DA-0453-8638-3DDC04F4B8BE}
- 	"3244B88D96E4430D8A5737BE88B4F049",  # {D88B4423-4E69-D034-A875-73EB884B0F94}
-  	"D0FCF26B5C9D24F4FA1CFE3896DFD040"   # {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}	
-    )
+    $CompressedCodes = @()
+    if ($env:ProblemCompressedCodes) {
+        $CompressedCodes = $env:ProblemCompressedCodes -split ',' | ForEach-Object { $_.Trim() }
+    } else {
+        Write-Host "- No ProblemCompressedCodes env variable found or empty, skipping compressed product key removal"
+    }
 
     # Uninstall Keys
-    Write-Host "`n- Removing Registry: Uninstall Keys"
-    foreach ($ProductCode in $KnownProductCodes) {
-        $UninstallPaths = @(
-            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode",
-            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode"
-        )
-        foreach ($Path in $UninstallPaths) {
-            Write-Host "- Processing Key: ${Path}"
-            if (Test-Path $Path) {
-                try {
-                    Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-                    Write-Host "- Successfully deleted: ${Path}"
-                } catch {
-                    Write-Host "- Failed to delete: ${Path}"
-                    Write-Host "  Error: $($_.Exception.Message)"
+    if ($KnownProductCodes.Count -gt 0) {
+        Write-Host "`n- Removing Registry: Uninstall Keys"
+        foreach ($ProductCode in $KnownProductCodes) {
+            $UninstallPaths = @(
+                "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode",
+                "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode"
+            )
+            foreach ($Path in $UninstallPaths) {
+                Write-Host "- Processing Key: ${Path}"
+                if (Test-Path $Path) {
+                    try {
+                        Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
+                        Write-Host "- Successfully deleted: ${Path}"
+                    } catch {
+                        Write-Host "- Failed to delete: ${Path}"
+                        Write-Host "  Error: $($_.Exception.Message)"
+                    }
+                } else {
+                    Write-Host "- Key Not Found: ${Path}"
                 }
-            } else {
-                Write-Host "- Key Not Found: ${Path}"
             }
         }
     }
 
     # Installer Product Keys
-    Write-Host "`n- Removing Registry: Installer Product Keys"
-    foreach ($Code in $CompressedCodes) {
-        $ProductKey = "HKLM:\Software\Classes\Installer\Products\$Code"
-        Write-Host "- Processing Key: ${ProductKey}"
-        if (Test-Path $ProductKey) {
-            try {
-                Remove-Item -Path $ProductKey -Recurse -Force -ErrorAction Stop
-                Write-Host "- Successfully deleted: ${ProductKey}"
-            } catch {
-                Write-Host "- Failed to delete: ${ProductKey}"
-                Write-Host "  Error: $($_.Exception.Message)"
-            }
-        } else {
-            Write-Host "- Key Not Found: ${ProductKey}"
-        }
-    }
-
-    # Installer UserData Product Keys
-    $UserDataBases = @(
-        "HKLM:\Software\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products",
-        "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products"
-    )
-    Write-Host "`n- Removing Registry: Installer UserData Keys"
-    foreach ($BasePath in $UserDataBases) {
+    if ($CompressedCodes.Count -gt 0) {
+        Write-Host "`n- Removing Registry: Installer Product Keys"
         foreach ($Code in $CompressedCodes) {
-            $FullPath = "$BasePath\$Code"
-            Write-Host "- Processing Key: ${FullPath}"
-            if (Test-Path $FullPath) {
+            $ProductKey = "HKLM:\Software\Classes\Installer\Products\$Code"
+            Write-Host "- Processing Key: ${ProductKey}"
+            if (Test-Path $ProductKey) {
                 try {
-                    Remove-Item -Path $FullPath -Recurse -Force -ErrorAction Stop
-                    Write-Host "- Successfully deleted: ${FullPath}"
+                    Remove-Item -Path $ProductKey -Recurse -Force -ErrorAction Stop
+                    Write-Host "- Successfully deleted: ${ProductKey}"
                 } catch {
-                    Write-Host "- Failed to delete: ${FullPath}"
+                    Write-Host "- Failed to delete: ${ProductKey}"
                     Write-Host "  Error: $($_.Exception.Message)"
                 }
             } else {
-                Write-Host "- Key Not Found: ${FullPath}"
+                Write-Host "- Key Not Found: ${ProductKey}"
+            }
+        }
+
+        # Installer UserData Product Keys
+        $UserDataBases = @(
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products"
+        )
+        Write-Host "`n- Removing Registry: Installer UserData Keys"
+        foreach ($BasePath in $UserDataBases) {
+            foreach ($Code in $CompressedCodes) {
+                $FullPath = "$BasePath\$Code"
+                Write-Host "- Processing Key: ${FullPath}"
+                if (Test-Path $FullPath) {
+                    try {
+                        Remove-Item -Path $FullPath -Recurse -Force -ErrorAction Stop
+                        Write-Host "- Successfully deleted: ${FullPath}"
+                    } catch {
+                        Write-Host "- Failed to delete: ${FullPath}"
+                        Write-Host "  Error: $($_.Exception.Message)"
+                    }
+                } else {
+                    Write-Host "- Key Not Found: ${FullPath}"
+                }
             }
         }
     }
 
-    # Other Registry Keys
+    # Other Registry Keys (these remain static, no env variable)
     $ExtraRegPaths = @(
         "HKCU:\Software\ScreenConnect",
         "HKLM:\Software\ScreenConnect",
@@ -121,58 +135,57 @@ function Remove-ScreenConnectTraces {
         }
     }
 
-	# Stop and delete all ScreenConnect services
-	Write-Host "`n- Attempting to Stop and Delete ScreenConnect Services"
-	$Services = Get-Service | Where-Object { $_.Name -like "ScreenConnect Client (*)" }
-	
-	if ($Services) {
-	    foreach ($Service in $Services) {
-	        try {
-	            if ($Service.Status -ne 'Stopped') {
-	                Stop-Service -Name $Service.Name -Force -ErrorAction Stop
-	                Write-Host "- Successfully stopped service: $($Service.Name)"
-	            }
-	        } catch {
-	            Write-Host "- Failed to stop service: $($Service.Name)"
-	            Write-Host "  Error: $($_.Exception.Message)"
-	        }
-	
-	        try {
-	            sc.exe delete "$($Service.Name)" | Out-Null
-	            Write-Host "- Successfully deleted service via sc.exe: $($Service.Name)"
-	        } catch {
-	            Write-Host "- Failed to delete service via sc.exe: $($Service.Name)"
-	            Write-Host "  Error: $($_.Exception.Message)"
-	        }
-	    }
-	} else {
-	    Write-Host "- No ScreenConnect services found to stop/delete"
-	}
-	
-	# Remove all ScreenConnect service registry keys
-	Write-Host "`n- Removing Registry: ScreenConnect Service Keys"
-	$ServicePath = "HKLM:\SYSTEM\CurrentControlSet\Services"
-	$ServiceKeys = Get-ChildItem -Path $ServicePath | Where-Object {
-	    $_.PSChildName -like "ScreenConnect Client (*)"
-	}
-	
-     if ($ServiceKeys) {
-	    foreach ($Key in $ServiceKeys) {
-	        Write-Host "- Found Service Key: $($Key.PSPath)"
-	        try {
-	            Remove-Item -Path $Key.PSPath -Recurse -Force -ErrorAction Stop
-	            Write-Host "- Successfully deleted service key: $($Key.PSChildName)"
-	        } catch {
-	            Write-Host "- Failed to delete service key: $($Key.PSChildName)"
-	            Write-Host "  Error: $($_.Exception.Message)"
-	        }
-	    }
-	} else {
-	    Write-Host "- No ScreenConnect service registry keys found"
-	}
+    # Stop and delete all ScreenConnect services
+    Write-Host "`n- Attempting to Stop and Delete ScreenConnect Services"
+    $Services = Get-Service | Where-Object { $_.Name -like "ScreenConnect Client (*)" }
+    
+    if ($Services) {
+        foreach ($Service in $Services) {
+            try {
+                if ($Service.Status -ne 'Stopped') {
+                    Stop-Service -Name $Service.Name -Force -ErrorAction Stop
+                    Write-Host "- Successfully stopped service: $($Service.Name)"
+                }
+            } catch {
+                Write-Host "- Failed to stop service: $($Service.Name)"
+                Write-Host "  Error: $($_.Exception.Message)"
+            }
 
+            try {
+                sc.exe delete "$($Service.Name)" | Out-Null
+                Write-Host "- Successfully deleted service via sc.exe: $($Service.Name)"
+            } catch {
+                Write-Host "- Failed to delete service via sc.exe: $($Service.Name)"
+                Write-Host "  Error: $($_.Exception.Message)"
+            }
+        }
+    } else {
+        Write-Host "- No ScreenConnect services found to stop/delete"
+    }
+    
+    # Remove all ScreenConnect service registry keys
+    Write-Host "`n- Removing Registry: ScreenConnect Service Keys"
+    $ServicePath = "HKLM:\SYSTEM\CurrentControlSet\Services"
+    $ServiceKeys = Get-ChildItem -Path $ServicePath | Where-Object {
+        $_.PSChildName -like "ScreenConnect Client (*)"
+    }
+    
+    if ($ServiceKeys) {
+        foreach ($Key in $ServiceKeys) {
+            Write-Host "- Found Service Key: $($Key.PSPath)"
+            try {
+                Remove-Item -Path $Key.PSPath -Recurse -Force -ErrorAction Stop
+                Write-Host "- Successfully deleted service key: $($Key.PSChildName)"
+            } catch {
+                Write-Host "- Failed to delete service key: $($Key.PSChildName)"
+                Write-Host "  Error: $($_.Exception.Message)"
+            }
+        }
+    } else {
+        Write-Host "- No ScreenConnect service registry keys found"
+    }
 
-    # Filesystem Cleanup
+    # Filesystem Cleanup (unchanged)
     $InstallDirs = @(
         "C:\Program Files\ScreenConnect",
         "C:\Program Files (x86)\ScreenConnect",
@@ -194,7 +207,7 @@ function Remove-ScreenConnectTraces {
             Write-Host "- Folder Not Found: ${Folder}"
         }
     }
-	
+    
     $ClientDirs = @(
         "C:\Program Files\ScreenConnect Client*",
         "C:\Program Files (x86)\ScreenConnect Client*"
@@ -213,7 +226,8 @@ function Remove-ScreenConnectTraces {
             }
         }
     }
-	
+    
     Write-Host "`n- ScreenConnect Cleanup Completed"
 }
+
 Remove-ScreenConnectTraces
