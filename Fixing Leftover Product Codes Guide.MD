@@ -110,6 +110,6 @@ After running the component, you should get an output showing you that your code
 The exit code should either indicate that the install was successful or that the install was successful but a reboot is required to complete it. If the install needed a reboot, there is a very good chance that the Join Link was not created and written properly to the UDF. Proceed to Step #4 if this is the case.
 
 
-## Step #4: Run the 'ScreenConnect Join Link Fix' on the endpoint. 
+## Step #4: Run the `ScreenConnect Join Link Fix` on the endpoint. 
 
 Once the Join Link Fix has finished, ScreenConnect should be successfully installed on the endpoint.
