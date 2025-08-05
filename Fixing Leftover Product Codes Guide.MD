@@ -97,3 +97,19 @@ Put the product code/s you found into the `ProblemProductCodes` variable and the
 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/1500ba0978901f9659bdd6af168e113673f04c12/Guide%20Images/runproductcodefixexample.png)
 
+
+After running the component, you should get an output showing you that your codes were successfully deleted: 
+
+
+![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/357a6bfef283a6a8e2560173051fd73c949c76c7/Guide%20Images/successfulproductcodefixexample.png)
+
+
+## Step #3: Try to reinstall ScreenConnect. 
+
+
+The exit code should either indicate that the install was successful or that the install was successful but a reboot is required to complete it. If the install needed a reboot, there is a very good chance that the Join Link was not created and written properly to the UDF. Proceed to Step #4 if this is the case.
+
+
+## Step #4: Run the 'ScreenConnect Join Link Fix' on the endpoint. 
+
+Once the Join Link Fix has finished, ScreenConnect should be successfully installed on the endpoint.
