@@ -82,7 +82,8 @@ You should get an output similar to this:
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/98e2b7e8e1a6de38c6335e111edd8cf1239a8808/Guide%20Images/lingeringinstallationsearchexamples.png)
 
 **Take note of these two lines:**
-  - `Uninstall Key Found: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04} - DisplayName: ScreenConnect Client (919d3745b4e34229)`
-  - `Installer Product Found: D0FCF26B5C9D24F4FA1CFE3896DFD040 - ProductName: ScreenConnect Client (919d3745b4e34229)`
+  - `Uninstall Key Found: **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** - DisplayName: ScreenConnect Client (919d3745b4e34229)`
+  - `Installer Product Found: **D0FCF26B5C9D24F4FA1CFE3896DFD040** - ProductName: ScreenConnect Client (919d3745b4e34229)`
 
+The Uninstall Key is the problematic product code (on this endpoint it's **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}**) and the Installer Product Found is the compressed version of the product code (on this endpoint it's **D0FCF26B5C9D24F4FA1CFE3896DFD040**)
 
