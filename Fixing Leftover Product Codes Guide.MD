@@ -1,7 +1,8 @@
 # Guide: Fixing Leftover Product Codes in ScreenConnect
-Sometimes Get-Package doesn't uninstall every trace of ScreenConnect on a system, causing future installations to fail due to old product codes being detected by the MSI installer. The error will look similar to this: 
 
-``` plaintext
+Sometimes `Get-Package` doesn't uninstall every trace of ScreenConnect on a system, causing future installations to fail due to old product codes being detected by the MSI installer. The error will look similar to this: 
+
+```plaintext
 Control/ScreenConnect Installer [WIN]
 Starting script
 Version 5.0
@@ -68,48 +69,63 @@ MSI (s) (6C:28) [16:37:07:770]: Windows Installer installed the product. Product
 Cleaning up
 File deleted
 Install appears to have failed, exiting script
-
-
 ```
 
-**The problematic line in question is here: `Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}`**
+**The problematic line in question is here:**  
+`Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}`
 
-## Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
+---
 
-You should get an output similar to this: 
+## Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint.
 
+You should get an output similar to this:  
 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/98e2b7e8e1a6de38c6335e111edd8cf1239a8808/Guide%20Images/lingeringinstallationsearchexamples.png)
 
 Take note of these two lines:
-  - `Uninstall Key Found: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04} - DisplayName: ScreenConnect Client (919d3745b4e34229)`
-  - `Installer Product Found: D0FCF26B5C9D24F4FA1CFE3896DFD040 - ProductName: ScreenConnect Client (919d3745b4e34229)`
 
-The Uninstall Key **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** is the problematic product code.
-The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed version of the above product code. Write down both the product code and it's compressed version somewhere. You will need them for the next step.
+- `Uninstall Key Found: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04} - DisplayName: ScreenConnect Client (919d3745b4e34229)`
+- `Installer Product Found: D0FCF26B5C9D24F4FA1CFE3896DFD040 - ProductName: ScreenConnect Client (919d3745b4e34229)`
 
-> Note: In some cases you may have multiple product and compressed codes. You need to save them all.
+The Uninstall Key **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** is the problematic product code.  
+The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed version. Write down both.
 
-## Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint. 
+> **Note:** In some cases you may have multiple product and compressed codes. You need to save them all.
 
-Put the product code/s you found into the `ProblemProductCodes` variable and the compressed code/s into the `ProblemCompressedCodes` variable. If you have multiple of each code, write a list using commas (with **no** spaces) in the variables. An example is shown below:
+---
 
+## Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint.
+
+Put the product code(s) into the `ProblemProductCodes` variable, and the compressed code(s) into `ProblemCompressedCodes`.
+
+- For multiple codes: **comma-separated, no spaces**.
+
+Example:
+
+```
+ProblemProductCodes={CODE1},{CODE2}
+ProblemCompressedCodes={COMP1},{COMP2}
+```
 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/1500ba0978901f9659bdd6af168e113673f04c12/Guide%20Images/runproductcodefixexample.png)
 
-
-After running the component, you should get an output showing you that your codes were successfully deleted: 
-
+After running the component, it should confirm successful deletion:
 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/357a6bfef283a6a8e2560173051fd73c949c76c7/Guide%20Images/successfulproductcodefixexample.png)
 
+---
 
-## Step #3: Try to reinstall ScreenConnect. 
+## Step #3: Try to reinstall ScreenConnect.
 
+The exit code should show:
 
-The exit code should either indicate that the install was successful or that the install was successful but a reboot is required to complete it. If the install needed a reboot, there is a very good chance that the Join Link was not created and written properly to the UDF. Proceed to Step #4 if this is the case.
+- **Success**, or
+- **Success with reboot required**
 
+> If a reboot was required, the **Join Link may not have written correctly**. Proceed to Step #4.
 
-## Step #4: Run the `ScreenConnect Join Link Fix` on the endpoint. 
+---
 
-Once the Join Link Fix has finished, ScreenConnect should be successfully installed on the endpoint.
+## Step #4: Run the `ScreenConnect Join Link Fix` on the endpoint.
+
+After running this, ScreenConnect should be **fully installed** and functioning.
