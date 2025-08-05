@@ -16,10 +16,6 @@ $env:ProblemProductCodes: Comma-separated list of problematic problem codes to r
 $env:ProblemCompressedCodes: Comma-separated list of problematic compressed codes to remove
 			  ( ex: 625CDFADC90EA164F9D86D9B3A5CFB45,F2C8075F566BF19C81EB608BEA345E56 )
 
-"{DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54},{F5708C2F-B665-C91F-18BE-06B8AE43E565}"
-$env:ProblemCompressedCodes = "625CDFADC90EA164F9D86D9B3A5CFB45,F2C8075F566BF19C81EB608BEA345E56"
-
-
 .NOTES
 Meant for use with LingeringInstallationsSearch
 You may have to use it and add product/compressed codes from there if this script
