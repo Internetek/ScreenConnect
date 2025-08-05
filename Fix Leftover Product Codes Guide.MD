@@ -72,5 +72,5 @@ Install appears to have failed, exiting script
 
 ```
 
-The problematic line in question is here: `Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}`
+**The problematic line in question is here: `Found old product code: {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}`**
 
