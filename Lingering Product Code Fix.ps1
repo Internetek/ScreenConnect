@@ -16,16 +16,18 @@ doesn't cover the codes for the versions you are trying to clean up
 #>
 
 function Remove-ScreenConnectTraces {
-    Write-Host "- Starting ScreenConnect Trace Cleanup"
+    Write-Host "- Starting ScreenConnect Cleanup"
 
     $KnownProductCodes = @(
         "{DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}",
-        "{F5708C2F-B665-C91F-18BE-06B8AE43E565}"
+        "{F5708C2F-B665-C91F-18BE-06B8AE43E565}",
+	"{9EEBA193-E8DA-0453-8638-3DDC04F4B8BE}"
     )
 
     $CompressedCodes = @(
         "625CDFADC90EA164F9D86D9B3A5CFB45",  # {DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}
-        "F2C8075F566BF19C81EB608BEA345E56"   # {F5708C2F-B665-C91F-18BE-06B8AE43E565}
+        "F2C8075F566BF19C81EB608BEA345E56",  # {F5708C2F-B665-C91F-18BE-06B8AE43E565}
+	"391ABEE9AD8E35406883D3CD404F8BEB"   # {9EEBA193-E8DA-0453-8638-3DDC04F4B8BE}
     )
 
     # Uninstall Keys
@@ -115,25 +117,56 @@ function Remove-ScreenConnectTraces {
         }
     }
 
-    # Service Registry Key
-    Write-Host "`n- Removing Registry: ScreenConnect Service Key"
-    $ServicePath = "HKLM:\SYSTEM\CurrentControlSet\Services"
-    $ServiceKey = Get-ChildItem -Path $ServicePath | Where-Object {
-        $_.PSChildName -like "ScreenConnect Client (*)"
-    } | Select-Object -First 1
+	# Stop and delete all ScreenConnect services
+	Write-Host "`n- Attempting to Stop and Delete ScreenConnect Services"
+	$Services = Get-Service | Where-Object { $_.Name -like "ScreenConnect Client (*)" }
+	
+	if ($Services) {
+	    foreach ($Service in $Services) {
+	        try {
+	            if ($Service.Status -ne 'Stopped') {
+	                Stop-Service -Name $Service.Name -Force -ErrorAction Stop
+	                Write-Host "- Successfully stopped service: $($Service.Name)"
+	            }
+	        } catch {
+	            Write-Host "- Failed to stop service: $($Service.Name)"
+	            Write-Host "  Error: $($_.Exception.Message)"
+	        }
+	
+	        try {
+	            sc.exe delete "$($Service.Name)" | Out-Null
+	            Write-Host "- Successfully deleted service via sc.exe: $($Service.Name)"
+	        } catch {
+	            Write-Host "- Failed to delete service via sc.exe: $($Service.Name)"
+	            Write-Host "  Error: $($_.Exception.Message)"
+	        }
+	    }
+	} else {
+	    Write-Host "- No ScreenConnect services found to stop/delete"
+	}
+	
+	# Remove all ScreenConnect service registry keys
+	Write-Host "`n- Removing Registry: ScreenConnect Service Keys"
+	$ServicePath = "HKLM:\SYSTEM\CurrentControlSet\Services"
+	$ServiceKeys = Get-ChildItem -Path $ServicePath | Where-Object {
+	    $_.PSChildName -like "ScreenConnect Client (*)"
+	}
+	
+     if ($ServiceKeys) {
+	    foreach ($Key in $ServiceKeys) {
+	        Write-Host "- Found Service Key: $($Key.PSPath)"
+	        try {
+	            Remove-Item -Path $Key.PSPath -Recurse -Force -ErrorAction Stop
+	            Write-Host "- Successfully deleted service key: $($Key.PSChildName)"
+	        } catch {
+	            Write-Host "- Failed to delete service key: $($Key.PSChildName)"
+	            Write-Host "  Error: $($_.Exception.Message)"
+	        }
+	    }
+	} else {
+	    Write-Host "- No ScreenConnect service registry keys found"
+	}
 
-    if ($ServiceKey) {
-        Write-Host "- Found Service Key: $($ServiceKey.PSPath)"
-        try {
-            Remove-Item -Path $ServiceKey.PSPath -Recurse -Force -ErrorAction Stop
-            Write-Host "- Successfully deleted service key"
-        } catch {
-            Write-Host "- Failed to delete service key"
-            Write-Host "  Error: $($_.Exception.Message)"
-        }
-    } else {
-        Write-Host "- Service key not found"
-    }
 
     # Filesystem Cleanup
     $InstallDirs = @(
@@ -177,6 +210,6 @@ function Remove-ScreenConnectTraces {
         }
     }
 	
-    Write-Host "`n- ScreenConnect Trace Cleanup Completed"
+    Write-Host "`n- ScreenConnect Cleanup Completed"
 }
 Remove-ScreenConnectTraces
