@@ -100,13 +100,6 @@ Put the product code(s) into the `ProblemProductCodes` variable, and the compres
 
 - For multiple codes: **comma-separated, no spaces**.
 
-Example:
-
-```
-ProblemProductCodes: {CODE1},{CODE2}
-ProblemCompressedCodes: COMP1,COMP2
-```
-
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/1500ba0978901f9659bdd6af168e113673f04c12/Guide%20Images/runproductcodefixexample.png)
 
 After running the component, it should confirm successful deletion:
