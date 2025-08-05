@@ -85,5 +85,8 @@ You should get an output similar to this:
   - `Uninstall Key Found: **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** - DisplayName: ScreenConnect Client (919d3745b4e34229)`
   - `Installer Product Found: **D0FCF26B5C9D24F4FA1CFE3896DFD040** - ProductName: ScreenConnect Client (919d3745b4e34229)`
 
-The Uninstall Key is the problematic product code (on this endpoint it's **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}**) and the Installer Product Found is the compressed version of the product code (on this endpoint it's **D0FCF26B5C9D24F4FA1CFE3896DFD040**)
+The Uninstall Key is the problematic product code. On this endpoint it's **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}**.  
+The Installer Product Found is the compressed version of the above product code. On this endpoint it's **D0FCF26B5C9D24F4FA1CFE3896DFD040**. Write down both the product code and it's compressed version somewhere. You will need them for the next step.
+
+# Step Two: 
 
