@@ -74,10 +74,6 @@ Install appears to have failed, exiting script
 
 **The problematic line in question is here: `Found old product code: {B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}`**
 
-These steps should help you rectify the issue.
-
-
-
 # Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. 
 
 You should get an output similar to this: 
