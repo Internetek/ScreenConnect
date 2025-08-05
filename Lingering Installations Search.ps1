@@ -21,7 +21,8 @@ function Find-ScreenConnectTraces {
     $KnownProductCodes = @(
         "{DAFDC526-E09C-461A-9F8D-D6B9A3C5BF54}",
         "{BF3098D4-63EA-EE16-1FAA-019CADEC9565}",
-        "{F5708C2F-B665-C91F-18BE-06B8AE43E565}"
+        "{F5708C2F-B665-C91F-18BE-06B8AE43E565}",
+        "{D88B4423-4E69-D034-A875-73EB884B0F94}"
     )
 
     # Services
