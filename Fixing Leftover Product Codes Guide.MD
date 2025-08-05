@@ -76,5 +76,5 @@ Install appears to have failed, exiting script
 
 These steps should help you rectify the issue.
 
-## Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. You should get an output similar to this: 
+# Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint. You should get an output similar to this: 
 ![Image is not displaying](https://github.com/Internetek/ScreenConnect/blob/98e2b7e8e1a6de38c6335e111edd8cf1239a8808/Guide%20Images/lingeringinstallationsearchexamples.png)
