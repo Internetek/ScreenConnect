@@ -53,16 +53,6 @@ function Test-IsElevated {
 
 # Checks if ScreenConnect has been installed 
 function Test-IsScreenConnectInstalled {
-    try {
-        $ServiceKeys = Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Services" -ErrorAction Stop | Where-Object { $_.Name -match "ScreenConnect Client \(" }
-        return $ServiceKeys.Count -gt 0
-    } catch {
-        throw "Failed to access registry to check for ScreenConnect: $($_.Exception.Message)"
-    }
-}
-
-# Checks if current ScreenConnect version is installed 
-function Test-IsCurrentVersionScreenConnectInstalled {
 	return Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
 }
 
@@ -595,3 +585,4 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
