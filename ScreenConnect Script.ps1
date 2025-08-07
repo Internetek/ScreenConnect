@@ -5,7 +5,7 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-5.0
+5.1
 
 .AUTHORS
 John Miller - Internetek
@@ -26,7 +26,7 @@ CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Gl
 #>
 Write-Host "Starting script"
 # === SETTING AND ENUMERATING VARIABLES === #
-Write-Host "Version 5.0" # Reported to make sure DRMM is using the current version
+Write-Host "Version 5.1" # Reported to make sure DRMM is using the current version
 Write-Host "Variables received from DRMM"
 Write-Host "  Thumbprint: $env:CWScreenConnectThumbprint"
 Write-Host "  Base URL: $env:CWScreenConnectBaseUrl"
