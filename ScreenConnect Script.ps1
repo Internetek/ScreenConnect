@@ -56,7 +56,6 @@ function Test-IsScreenConnectInstalled {
 	return Test-Path "HKLM:\SYSTEM\CurrentControlSet\Services\ScreenConnect Client ($env:CWScreenConnectThumbprint)"
 }
 
-
 # Stops ScreenConnect service and reports result
 function Stop-SCService {
     try {
@@ -193,10 +192,12 @@ function Install-ScreenConnect {
         Write-Host "  Failed to delete file" 
         Write-Host " " $_.Exception.Message
     }
-    if ($Process.ExitCode -ne 0) {
+	
+    if (($Process.ExitCode -ne 0) -and ($Process.ExitCode -ne 3010)) {
         Write-Host "Install appears to have failed, exiting script"
         exit 1
     }
+	
     # Make sure it started
     Write-Host "Checking install success"
     # Get service status
@@ -239,89 +240,89 @@ function Uninstall-ScreenConnect {
     $UninstallCompleted = $false
 
     # Attempt uninstall using Method #1
-    Write-Host "  Attempting Get-Package uninstall"
-    try {
-        $Packages = Get-Package | Where-Object { $_.Name -like "ScreenConnect Client*" }
-        foreach ($Package in $Packages) {
-            Write-Host "  Attempting to uninstall package: $($Package.Name)"
-            $Package | Uninstall-Package -ErrorAction Stop | Out-Null
-            Write-Host "    Successfully uninstalled $($Package.Name)"
+    Write-Host "  Attempting registry string uninstall"
+
+    $UninstallPaths = @(
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+    )
+
+    foreach ($Path in $UninstallPaths) {
+        Get-ChildItem $Path -ErrorAction SilentlyContinue | ForEach-Object {
+            $App = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+            if ($App.DisplayName -like $ServiceName -and $App.UninstallString) {
+                Write-Host "  Found: $($App.DisplayName)"
+                Write-Host "  Uninstalling using the registry string: $($App.UninstallString)"
+                $UninstallString = $App.UninstallString.Trim()
+
+                $Parts = $UninstallString -split '\s+', 2
+                $ExePath = $Parts[0]
+                $Arguments = if ($Parts.Count -ge 2) { $Parts[1] } else { "" }
+
+                # Resolve executable path from path if necessary
+                $Command = Get-Command $ExePath -ErrorAction SilentlyContinue
+                if ($Command) {
+                    $ExePath = $Command.Source
+                } else {
+                    Write-Host "  Error: Executable $ExePath not found in path. Skipping."
+                    continue
+                }
+
+                # Add silent flags
+                if ($ExePath -match 'msiexec.exe') {
+                    if ($Arguments -notmatch "/quiet|/qn|/s|/silent") {
+                        $Arguments += " /qn /norestart"
+                    }
+                } else {
+                    if ($Arguments -notmatch "/quiet|/qn|/s|/silent") {
+                        $Arguments += " /quiet"
+                    }
+                }
+
+                Write-Host "  Executing uninstall: $ExePath $Arguments"
+                try {
+                    Start-Process -FilePath $ExePath -ArgumentList $Arguments -Wait -ErrorAction Stop
+                    Write-Host "  Registry uninstall command executed"
+                } catch {
+                    Write-Host "  Registry uninstall failed: $($_.Exception.Message)"
+                }
+
+                Start-Sleep -Seconds 5
+
+                if (-not (Test-IsScreenConnectInstalled)) {
+                    Write-Host "  Uninstall was successful using registry string method."
+                    $UninstallCompleted = $true
+                    break
+                } else {
+                    Write-Host "  ScreenConnect still installed, trying next path."
+                }
+            }
         }
-    } catch {
-        Write-Host "  Get-Package uninstall failed: $($_.Exception.Message)"
-    }
 
-    Start-Sleep -Seconds 5
-
-    if (-not (Test-IsScreenConnectInstalled)) {
-        Write-Host "  Uninstall was successful using the Get-Package method."
-        $UninstallCompleted = $true
-    } else {
-        Write-Host "  ScreenConnect still installed after Get-Package uninstall."
+        if ($UninstallCompleted) { break }
     }
 
     # Attempt uninstall using Method #2
     if (-not $UninstallCompleted) {
-        Write-Host "  Attempting registry string uninstall"
-
-        $UninstallPaths = @(
-            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
-        )
-
-        foreach ($Path in $UninstallPaths) {
-            Get-ChildItem $Path -ErrorAction SilentlyContinue | ForEach-Object {
-                $App = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
-                if ($App.DisplayName -like "*ScreenConnect Client*" -and $App.UninstallString) {
-                    Write-Host "  Found: $($App.DisplayName)"
-                    Write-Host "  Uninstalling using the registry string: $($App.UninstallString)"
-                    $UninstallString = $App.UninstallString.Trim()
-
-                    $Parts = $UninstallString -split '\s+', 2
-                    $ExePath = $Parts[0]
-                    $Arguments = if ($Parts.Count -ge 2) { $Parts[1] } else { "" }
-
-                    # Resolve executable path from path if necessary
-                    $Command = Get-Command $ExePath -ErrorAction SilentlyContinue
-                    if ($Command) {
-                        $ExePath = $Command.Source
-                    } else {
-                        Write-Host "  Error: Executable $ExePath not found in path. Skipping."
-                        continue
-                    }
-
-                    # Add silent flags
-                    if ($ExePath -match 'msiexec.exe') {
-                        if ($Arguments -notmatch "/quiet|/qn|/s|/silent") {
-                            $Arguments += " /qn /norestart"
-                        }
-                    } else {
-                        if ($Arguments -notmatch "/quiet|/qn|/s|/silent") {
-                            $Arguments += " /quiet"
-                        }
-                    }
-
-                    Write-Host "  Executing uninstall: $ExePath $Arguments"
-                    try {
-                        Start-Process -FilePath $ExePath -ArgumentList $Arguments -Wait -ErrorAction Stop
-                        Write-Host "  Registry uninstall command executed"
-                    } catch {
-                        Write-Host "  Registry uninstall failed: $($_.Exception.Message)"
-                    }
-
-                    Start-Sleep -Seconds 5
-
-                    if (-not (Test-IsScreenConnectInstalled)) {
-                        Write-Host "  Uninstall was successful using registry string method."
-                        $UninstallCompleted = $true
-                        break
-                    } else {
-                        Write-Host "  ScreenConnect still installed, trying next path."
-                    }
-                }
+        Write-Host "  Attempting Get-Package uninstall"
+        try {
+            $Packages = Get-Package | Where-Object { $_.Name -like $ServiceName }
+            foreach ($Package in $Packages) {
+                Write-Host "  Attempting to uninstall package: $($Package.Name)"
+                $Package | Uninstall-Package -ErrorAction Stop | Out-Null
+                Write-Host "    Successfully uninstalled $($Package.Name)"
             }
+        } catch {
+            Write-Host "  Get-Package uninstall failed: $($_.Exception.Message)"
+        }
 
-            if ($UninstallCompleted) { break }
+        Start-Sleep -Seconds 5
+
+        if (-not (Test-IsScreenConnectInstalled)) {
+            Write-Host "  Uninstall was successful using the Get-Package method."
+            $UninstallCompleted = $true
+        } else {
+            Write-Host "  ScreenConnect still installed after Get-Package uninstall."
         }
     }
 
@@ -585,4 +586,5 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
 
