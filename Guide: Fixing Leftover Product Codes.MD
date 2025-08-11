@@ -76,7 +76,13 @@ Install appears to have failed, exiting script
 
 ---
 
-## Step #1: Run the `ScreenConnect Lingering Installations Search` component on the endpoint.
+## Step #1: Run the `Control/ScreenConnect Installer [WIN]` component on the endpoint with the `Uninstall` action selected.
+
+Depending on how broken the lingering ScreenConnect installations are, this component could clear it up. If this doesn't work, proceed to the next step.
+
+---
+
+## Step #2: Run the `ScreenConnect Lingering Installations Search` component on the endpoint.
 
 You should get an output similar to this:  
 
@@ -90,11 +96,11 @@ Take note of these two lines:
 The Uninstall Key **{B62FCF0D-D9C5-4F42-AFC1-EF8369FD0D04}** is the problematic product code.  
 The Installer Product **D0FCF26B5C9D24F4FA1CFE3896DFD040** is the compressed version. Write down both.
 
-> **Note:** In some cases you may have multiple product and compressed codes. You need to save them all.
+> **Note:** In some cases you may have multiple product and compressed codes. You need to save them all. Be sure to only save ones that are connected to the specific ScreenConnect Client you are trying to clear up.
 
 ---
 
-## Step #2: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint.
+## Step #3: Run the `ScreenConnect Lingering Product Code Fix` component on the endpoint.
 
 Put the product code(s) into the `ProblemProductCodes` variable, and the compressed code(s) into `ProblemCompressedCodes`.
 
@@ -108,17 +114,8 @@ After running the component, it should confirm successful deletion:
 
 ---
 
-## Step #3: Try to reinstall ScreenConnect.
+## Step #4: Try to reinstall ScreenConnect.
 
-The exit code should show:
-
-- **Success**, or
-- **Success with reboot required**
-
-If a reboot was required, the **Join Link may not have written correctly**. Proceed to Step #4.
+- ScreenConnect should install properly at this point.
 
 ---
-
-## Step #4: Run the `ScreenConnect Join Link Fix` on the endpoint.
-
-After running this, ScreenConnect should be **fully installed** and functioning.
