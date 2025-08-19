@@ -5,7 +5,7 @@ It's been hacked together from multiple scripts and our own code to make the mos
 There is loads of output and checks because it makes it easier for me to diagnose issues in the script when working with remote endpoints.
 
 .VERSION
-5.1
+5.2
 
 .AUTHORS
 John Miller - Internetek
@@ -26,7 +26,7 @@ CWScreenConnectusrUDF: UDF where we'll put the ScreenConnect link. Set at the Gl
 #>
 Write-Host "Starting script"
 # === SETTING AND ENUMERATING VARIABLES === #
-Write-Host "Version 5.1" # Reported to make sure DRMM is using the current version
+Write-Host "Version 5.2" # Reported to make sure DRMM is using the current version
 Write-Host "Variables received from DRMM"
 Write-Host "  Thumbprint: $env:CWScreenConnectThumbprint"
 Write-Host "  Base URL: $env:CWScreenConnectBaseUrl"
@@ -158,11 +158,37 @@ function Download-Installer {
     Write-Output "  $InstallerFile downloaded"
 }
 
+function Validate-MSI {
+	param([string]$InstallerPath) 
+
+ 	Write-Host "  Validating installer file"
+	if (-not (Test-Path $InstallerPath)) {
+		Write-Host "  Installer file wasn't found at $InstallerPath"
+ 		return $false
+	}
+
+	$InstallerSize = (Get-Item $InstallerPath).Length
+	if ($InstallerSize -lt 1MB) {
+ 		Write-Host "  Installer file is less than 1MB, the download has likely failed"
+   		return $false
+	}  	
+
+ 	Write-Host "  Installer file validated"
+  	return $true
+}
+
 # Install action
 function Install-ScreenConnect {
     Write-Host "Starting install"
     # Calling download function
     Download-Installer
+ 	
+  	# Validating MSI
+ 	if (-not (Validate-MSI $InstallerFile)) {
+  		Write-Host "  Installer file validation failed, exiting with error"
+		exit 1
+	}
+ 	
     # Installing file
     if ($IsOverrideEnabled) {
        Write-Host "  Override called, using MSI Transform"
