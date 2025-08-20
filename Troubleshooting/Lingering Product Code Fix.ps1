@@ -43,17 +43,17 @@ function Remove-ScreenConnectClientInstance {
                 "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode"
             )
             foreach ($Path in $UninstallPaths) {
-                Write-Host "  Processing Key: ${Path}"
+                Write-Host "  Processing Key: '${Path}'"
                 if (Test-Path $Path) {
                     try {
                         Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-                        Write-Host "  Successfully deleted: ${Path}"
+                        Write-Host "  Successfully deleted: '${Path}'"
                     } catch {
-                        Write-Host "  Failed to delete: ${Path}"
+                        Write-Host "  Failed to delete: '${Path}'"
                         Write-Host "  Error: $($_.Exception.Message)"
                     }
                 } else {
-                    Write-Host "  Key Not Found: ${Path}"
+                    Write-Host "  Key Not Found: '${Path}'"
                 }
             }
         }
@@ -64,17 +64,17 @@ function Remove-ScreenConnectClientInstance {
         Write-Host "`nRemoving Registry: Installer Product Keys"
         foreach ($Code in $CompressedCodes) {
             $ProductKey = "HKLM:\Software\Classes\Installer\Products\$Code"
-            Write-Host "  Processing Key: ${ProductKey}"
+            Write-Host "  Processing Key: '${ProductKey}'"
             if (Test-Path $ProductKey) {
                 try {
                     Remove-Item -Path $ProductKey -Recurse -Force -ErrorAction Stop
-                    Write-Host "  Successfully deleted: ${ProductKey}"
+                    Write-Host "  Successfully deleted: '${ProductKey}'"
                 } catch {
-                    Write-Host "  Failed to delete: ${ProductKey}"
+                    Write-Host "  Failed to delete: '${ProductKey}'"
                     Write-Host "  Error: $($_.Exception.Message)"
                 }
             } else {
-                Write-Host "  Key Not Found: ${ProductKey}"
+                Write-Host "  Key Not Found: '${ProductKey}'"
             }
         }
 
@@ -87,58 +87,57 @@ function Remove-ScreenConnectClientInstance {
         foreach ($BasePath in $UserDataBases) {
             foreach ($Code in $CompressedCodes) {
                 $FullPath = "$BasePath\$Code"
-                Write-Host "  Processing Key: ${FullPath}"
+                Write-Host "  Processing Key: '${FullPath}'"
                 if (Test-Path $FullPath) {
                     try {
                         Remove-Item -Path $FullPath -Recurse -Force -ErrorAction Stop
-                        Write-Host "  Successfully deleted: ${FullPath}"
+                        Write-Host "  Successfully deleted: '${FullPath}'"
                     } catch {
-                        Write-Host "  Failed to delete: ${FullPath}"
+                        Write-Host "  Failed to delete: '${FullPath}'"
                         Write-Host "  Error: $($_.Exception.Message)"
                     }
                 } else {
-                    Write-Host "  Key Not Found: ${FullPath}"
+                    Write-Host "  Key Not Found: '${FullPath}'"
                 }
             }
         }
     }
 
-    # Specific client ID and service name
     $ClientID = "919d3745b4e34229"
     $TargetServiceName = "ScreenConnect Client ($ClientID)"
 
     # Stop and delete the ScreenConnect service
-    Write-Host "`nAttempting to Stop and Delete ScreenConnect Service: $TargetServiceName"
+    Write-Host "`nAttempting to Stop and Delete ScreenConnect Service: '$TargetServiceName'"
     try {
         $Service = Get-Service -Name $TargetServiceName -ErrorAction SilentlyContinue
         if ($Service) {
             if ($Service.Status -ne 'Stopped') {
                 Stop-Service -Name $Service.Name -Force -ErrorAction Stop
-                Write-Host "  Successfully stopped service: $($Service.Name)"
+                Write-Host "  Successfully stopped service: '$($Service.Name)'"
             }
             sc.exe delete "$($Service.Name)" | Out-Null
-            Write-Host "  Successfully deleted service: $($Service.Name)"
+            Write-Host "  Successfully deleted service: '$($Service.Name)'"
         } else {
-            Write-Host "  Service not found: $TargetServiceName"
+            Write-Host "  Service not found: '$TargetServiceName'"
         }
     } catch {
-        Write-Host "  Failed to stop or delete service: $TargetServiceName"
+        Write-Host "  Failed to stop or delete service: '$TargetServiceName'"
         Write-Host "  Error: $($_.Exception.Message)"
     }
 
     # Remove service registry key
-    Write-Host "`nRemoving Registry: Service Key for $TargetServiceName"
+    Write-Host "`nRemoving Registry: Service Key for '$TargetServiceName'"
     $ServiceKeyPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$TargetServiceName"
     if (Test-Path $ServiceKeyPath) {
         try {
             Remove-Item -Path $ServiceKeyPath -Recurse -Force -ErrorAction Stop
-            Write-Host "  Successfully deleted service key: $TargetServiceName"
+            Write-Host "  Successfully deleted service key: '$TargetServiceName'"
         } catch {
-            Write-Host "  Failed to delete service key: $TargetServiceName"
+            Write-Host "  Failed to delete service key: '$TargetServiceName'"
             Write-Host "  Error: $($_.Exception.Message)"
         }
     } else {
-        Write-Host "  Service registry key not found: $ServiceKeyPath"
+        Write-Host "  Service registry key not found: '$ServiceKeyPath'"
     }
 
     # Filesystem Cleanup
@@ -147,13 +146,13 @@ function Remove-ScreenConnectClientInstance {
     if (Test-Path $SpecificClientPath) {
         try {
             Remove-Item -Path $SpecificClientPath -Recurse -Force -ErrorAction Stop
-            Write-Host "  Successfully deleted: $SpecificClientPath"
+            Write-Host "  Successfully deleted: '$SpecificClientPath'"
         } catch {
-            Write-Host "  Failed to delete: $SpecificClientPath"
+            Write-Host "  Failed to delete: '$SpecificClientPath'"
             Write-Host "  Error: $($_.Exception.Message)"
         }
     } else {
-        Write-Host "  No folder found at: $SpecificClientPath"
+        Write-Host "  No folder found at: '$SpecificClientPath'"
     }
 
     Write-Host "`nCleanup Completed for ScreenConnect Client (919d3745b4e34229)"
