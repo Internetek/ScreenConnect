@@ -19,10 +19,10 @@ function Find-ScreenConnectTraces {
         $Services = Get-Service | Where-Object { $_.Name -like "*ScreenConnect*" }
         if ($Services) {
             foreach ($Service in $Services) {
-                Write-Host "  Service Found: $($Service.Name) - Status: $($Service.Status)"
+                Write-Host "  Service Found: '$($Service.Name)' - Status: $($Service.Status)"
             }
         } else {
-            Write-Host "  No ScreenConnect-related services found."
+            Write-Host "  No ScreenConnect-related services found"
         }
 
         # Registry Uninstall Keys (64-bit)
@@ -39,10 +39,10 @@ function Find-ScreenConnectTraces {
                     Write-Host "  Uninstall Key Found: $($Key.PSChildName) - DisplayName: $($Props.DisplayName)"
                 }
             } else {
-                Write-Host "  No matching entries found in 64-bit Uninstall Keys."
+                Write-Host "  No matching entries found in 64-bit Uninstall Keys"
             }
         } catch {
-            Write-Host "  Failed to access 64-bit Uninstall Keys. Error: $($_.Exception.Message)"
+            Write-Host "  Error accessing 64-bit Uninstall Keys: $($_.Exception.Message)"
         }
 
         # Registry Uninstall Keys (32-bit)
@@ -59,10 +59,10 @@ function Find-ScreenConnectTraces {
                     Write-Host "  Uninstall Key Found: $($Key.PSChildName) - DisplayName: $($Props.DisplayName)"
                 }
             } else {
-                Write-Host "  No matching entries found in 32-bit Uninstall Keys."
+                Write-Host "  No matching entries found in 32-bit Uninstall Keys"
             }
         } catch {
-            Write-Host "  Failed to access 32-bit Uninstall Keys. Error: $($_.Exception.Message)"
+            Write-Host "  Error accessing 32-bit Uninstall Keys: $($_.Exception.Message)"
         }
 
         # Registry Uninstall Keys (HKCU)
@@ -79,7 +79,7 @@ function Find-ScreenConnectTraces {
                     Write-Host "  User Uninstall Key Found: $($Key.PSChildName) - DisplayName: $($Props.DisplayName)"
                 }
             } else {
-                Write-Host "  No matching entries found in Current User Uninstall Keys."
+                Write-Host "  No matching entries found in Current User Uninstall Keys"
             }
         } catch {
             Write-Host "  Error while accessing Current User Uninstall Keys: $($_.Exception.Message)"
@@ -99,7 +99,7 @@ function Find-ScreenConnectTraces {
                     Write-Host "  Installer Product Found: $($Key.PSChildName) - ProductName: $($Props.ProductName)"
                 }
             } else {
-                Write-Host "  No matching entries found in Installer Products."
+                Write-Host "  No matching entries found in Installer Products"
             }
         } catch {
             Write-Host "  Error while accessing Installer Products: $($_.Exception.Message)"
@@ -127,13 +127,13 @@ function Find-ScreenConnectTraces {
                             Write-Host "  UserData Product Found: $($Key.PSChildName) - ProductName: $Pn"
                         }
                     } else {
-                        Write-Host "  No ScreenConnect products found in this UserData path."
+                        Write-Host "  No ScreenConnect products found in this UserData path"
                     }
                 } catch {
-                    Write-Host "  Error while accessing path ${Path}: $($_.Exception.Message)"
+                    Write-Host "  Error while accessing path '${Path}': $($_.Exception.Message)"
                 }
             } else {
-                Write-Host "  Path Not Found: $Path"
+                Write-Host "  Path Not Found: '$Path'"
             }
         }
 
@@ -146,9 +146,9 @@ function Find-ScreenConnectTraces {
         )
         foreach ($Path in $RegPaths) {
             if (Test-Path $Path) {
-                Write-Host "  Registry Key Found: $Path"
+                Write-Host "  Registry Key Found: '$Path'"
             } else {
-                Write-Host "  Key Not Found: $Path"
+                Write-Host "  Key Not Found: '$Path'"
             }
         }
 
@@ -162,9 +162,9 @@ function Find-ScreenConnectTraces {
         )
         foreach ($Folder in $Folders) {
             if (Test-Path $Folder) {
-                Write-Host "  Folder Found: $Folder"
+                Write-Host "  Folder Found: '$Folder'"
             } else {
-                Write-Host "  Folder Not Found: $Folder"
+                Write-Host "  Folder Not Found: '$Folder'"
             }
         }
 
@@ -179,10 +179,10 @@ function Find-ScreenConnectTraces {
                 }
             if ($InstallerFiles) {
                 foreach ($File in $InstallerFiles) {
-                    Write-Host "  MSI File Found: $($File.FullName)"
+                    Write-Host "  MSI File Found: '$($File.FullName)'"
                 }
             } else {
-                Write-Host "  No ScreenConnect-related MSI files found in Installer Cache."
+                Write-Host "  No ScreenConnect-related MSI files found in Installer Cache"
             }
         } catch {
             Write-Host "  Error while accessing Installer Cache: $($_.Exception.Message)"
