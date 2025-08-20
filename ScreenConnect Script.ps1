@@ -84,7 +84,7 @@ function Stop-SCProcesses {
     $AllStopped = $true
     foreach ($Process in $Processes) {
         try {
-            Write-Host "  Stopping process: $($Process.Name) (ID: $($Process.Id))"
+            Write-Host "  Stopping process: '$($Process.Name)' (ID: $($Process.Id))"
             Stop-Process -Id $Process.Id -Force -ErrorAction Stop
             Start-Sleep -Milliseconds 200
             if (Get-Process -Id $Process.Id -ErrorAction SilentlyContinue) {
@@ -121,7 +121,7 @@ function Set-TlsVersion {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 		return [System.Net.SecurityProtocolType]::Tls12
     } else {
-        Write-Warning "  TLS 1.2 or TLS 1.3 isn't supported on this system. This download may fail!"
+        Write-Warning "  TLS 1.2 or TLS 1.3 isn't supported on this system. This download may fail"
 		return $null
     }
 }
@@ -138,7 +138,7 @@ function Download-Installer {
             throw "  File download failed"
         }
     } catch {
-        Write-Error "  Download failed: $_"
+        Write-Host "  Download failed: $($_.Exception.Message)"
         if ($PrimaryTls -eq [System.Net.SecurityProtocolType]::Tls13) {
             Write-Output "  Retrying with TLS1.2"
             try {
@@ -148,14 +148,14 @@ function Download-Installer {
                     throw "  File download failed on second attempt"
                 }
             } catch {
-                Write-Error "  Second attempt failed: $_"
+                Write-Error "  Second attempt failed: $($_.Exception.Message)"
                 exit 1
             }
         } else {
             exit 1
         }
     }
-    Write-Output "  $InstallerFile downloaded"
+    Write-Output "  '$InstallerFile' downloaded"
 }
 
 function Validate-MSI {
@@ -163,7 +163,7 @@ function Validate-MSI {
 
  	Write-Host "  Validating installer file"
 	if (-not (Test-Path $InstallerPath)) {
-		Write-Host "  Installer file wasn't found at $InstallerPath"
+		Write-Host "  Installer file wasn't found at '$InstallerPath'"
  		return $false
 	}
 
@@ -290,7 +290,7 @@ function Uninstall-ScreenConnect {
                 if ($Command) {
                     $ExePath = $Command.Source
                 } else {
-                    Write-Host "  Error: Executable $ExePath not found in path. Skipping."
+                    Write-Host "  Warning: executable '$ExePath' not found in path, skipping"
                     continue
                 }
 
@@ -305,7 +305,7 @@ function Uninstall-ScreenConnect {
                     }
                 }
 
-                Write-Host "  Executing uninstall: $ExePath $Arguments"
+                Write-Host "  Executing uninstall: '$ExePath $Arguments'"
                 try {
                     Start-Process -FilePath $ExePath -ArgumentList $Arguments -Wait -ErrorAction Stop
                     Write-Host "  Registry uninstall command executed"
@@ -316,11 +316,11 @@ function Uninstall-ScreenConnect {
                 Start-Sleep -Seconds 5
 
                 if (-not (Test-IsScreenConnectInstalled)) {
-                    Write-Host "  Uninstall was successful using registry string method."
+                    Write-Host "  Uninstall was successful using registry string method"
                     $UninstallCompleted = $true
                     break
                 } else {
-                    Write-Host "  ScreenConnect still installed, trying next path."
+                    Write-Host "  ScreenConnect still installed, trying next path"
                 }
             }
         }
@@ -345,10 +345,10 @@ function Uninstall-ScreenConnect {
         Start-Sleep -Seconds 5
 
         if (-not (Test-IsScreenConnectInstalled)) {
-            Write-Host "  Uninstall was successful using the Get-Package method."
+            Write-Host "  Uninstall was successful using the Get-Package method"
             $UninstallCompleted = $true
         } else {
-            Write-Host "  ScreenConnect still installed after Get-Package uninstall."
+            Write-Host "  ScreenConnect still installed after Get-Package uninstall"
         }
     }
 
@@ -411,17 +411,17 @@ function Upgrade-ScreenConnect {
 			$VersionObjects = $Matches | ForEach-Object { [version]$_.Value }
 			$CurrentStableVersion = ($VersionObjects | Sort-Object -Descending)[0]
 			
-			Write-Output "  Current Stable Version: $CurrentStableVersion"
-			Write-Output "  Installed Version: $InstalledVersion"
+			Write-Host "  Current Stable Version: $CurrentStableVersion"
+			Write-Host "  Installed Version: $InstalledVersion"
 		   
 			if ($InstalledVersion -eq $CurrentStableVersion) {
-				Write-Host "  $ProductName version ($InstalledVersion) matches target version ($CurrentStableVersion), nothing to do"
+				Write-Host "  '$ProductName' version '($InstalledVersion)' matches target version '($CurrentStableVersion)', nothing to do"
 				exit 0
 			} else {
-				Write-Host "  $ProductName version ($InstalledVersion) doesn't match target version ($CurrentStableVersion), continuing"
+				Write-Host "  '$ProductName' version '($InstalledVersion)' doesn't match target version '($CurrentStableVersion)', continuing"
 			}
 		} else {
-			Write-Output "  No stable version found. Exiting script."
+			Write-Host "  No stable version found, exiting with error"
 			exit 0
 		}
 	}	
@@ -453,7 +453,7 @@ function Upgrade-ScreenConnect {
 	$InstallerPath = Join-Path $ScriptDir $InstallerFile 
 	
 	if (-not (Test-Path $SevenZipPath)) {
-		Write-Host "  7z.exe not found in $SevenZipPath. Exiting script."
+		Write-Host "  7z.exe not found in '$SevenZipPath', exiting with error"
 		exit 1
 	}
 	
@@ -461,8 +461,8 @@ function Upgrade-ScreenConnect {
         $ExtractFiles = & $SevenZipPath e $InstallerPath "-o$StagingDir" -y -bse0 -bsp0 -bso0 # disables all output
     }
     catch {
-        Write-Host "  Extraction failed, exiting script"
-        Write-Host "  Error: $_.Exception.Message"
+        Write-Host "  Error during extraction: $($_.Exception.Message)"
+        Write-Host "  Exiting with error"
         if (-not $IsOverrideEnabled) {
             rm .\$InstallerFile # Cleaning up
         }
@@ -471,8 +471,8 @@ function Upgrade-ScreenConnect {
     if (Test-Path -Path $StagingDir -ErrorAction SilentlyContinue)  {
         Write-Host "  Extraction successful, continuing"
     } else {
-        Write-Host "  Extraction failed, exiting script"
-        Write-Host "  Error: $_.Exception.Message"
+        Write-Host "  Extraction failed, exiting with error"
+        Write-Host "  Error: $($_.Exception.Message)"
         if (-not $IsOverrideEnabled) {
             rm .\$InstallerFile # Cleaning up
         }
@@ -499,14 +499,14 @@ function Upgrade-ScreenConnect {
     Write-Host "  Upgrading files"
     $FromFolder = Join-Path $StagingPath '*'
     $ToFolder = $InstallBasePath
-    Write-Host "  Copy from $FromFolder"
-    Write-Host "  Upgrading $ToFolder"
+    Write-Host "  Copy from '$FromFolder'"
+    Write-Host "  Upgrading '$ToFolder'"
     try {
         $CopyProcess = Copy-Item -Path $FromFolder -Destination $ToFolder -Recurse -Force -ErrorAction Stop
         Write-Host "  Copy to production successful"
     }
     catch {
-        Write-Host "  Copying to production failed: $_.Exception.Message"
+        Write-Host "  Copying to production failed: $($_.Exception.Message)"
         Write-Host "  Continuing script to recover"
     }
     # Start service
@@ -516,21 +516,21 @@ function Upgrade-ScreenConnect {
         $StartService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     }
     catch {
-        Write-Host "  Error while starting service: $_.Exception.Message"
+        Write-Host "  Error while starting service: $($_.Exception.Message)"
     }
     if ($StartService.Status -eq 'Running') {
         Write-Host "  Service has started"
     } else {
-        Write-Host "  Service has not started: $_.Exception.Message"
+        Write-Host "  Service has not started: $($_.Exception.Message)"
         exit 1
     }
     # Update version in HKLM using EXE version
     Write-Host "  Updating version in registry"
 	$FoundVersion = (Get-Item $ScreenConnectExePath).VersionInfo.FileVersion
 
-    Write-Host "  Version $FoundVersion found in files"
+    Write-Host "  Version '$FoundVersion' found in files"
     $UninstallCode = (Get-Package -Name $ServiceName).FastPackageReference
-    Write-Host "  Registry entry is $UninstallCode"
+    Write-Host "  Registry entry is '$UninstallCode'"
     try { 
         $WriteReg = Set-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$UninstallCode" -Name "DisplayVersion" -Value $FoundVersion -ErrorAction Stop
         Write-Host "  Version written to registry"
@@ -553,7 +553,7 @@ if ($IsOverrideEnabled) {
     Write-Host "Starting preflight checks"
     # Make sure we're working with elevated rights
     if (-not (Test-IsElevated)) {
-        Write-Host "  Not Admin. Please run with Administrator privileges."
+        Write-Host "  Not Admin. Please run with Administrator privileges"
         exit 1
     } else {
         Write-Host "  Elevated privs confirmed, continuing script"
@@ -573,9 +573,9 @@ if ($IsOverrideEnabled) {
     # Check if it's already installed, using service instead of uninstall because we care more about files on drive
     $IsInstalled = Test-IsScreenConnectInstalled
     if ($IsInstalled) {
-        Write-Host "  $ProductName is installed"
+        Write-Host "  '$ProductName' is installed"
     } else {
-        Write-Host "  $ProductName is not installed"
+        Write-Host "  '$ProductName' is not installed"
     }
     Write-Host "  Done"
 }
@@ -585,7 +585,7 @@ Write-Host "Starting action"
 switch ($env:ScriptAction) {
     "install" {
         if ($IsInstalled -and -not $IsOverrideEnabled) {
-            Write-Output "  $ProductName already installed, nothing to do"
+            Write-Output "  '$ProductName' already installed, nothing to do"
         } else {
             Install-ScreenConnect
         }
@@ -594,14 +594,14 @@ switch ($env:ScriptAction) {
         if ($IsInstalled -or $IsOverrideEnabled) {
             Uninstall-ScreenConnect
         } else {
-            Write-Output "  $ProductName not installed, nothing to do"
+            Write-Output "  '$ProductName' not installed, nothing to do"
         }
     }
     "upgrade" {
         if ($IsInstalled -or $IsOverrideEnabled) {
             Upgrade-ScreenConnect
         } else {
-            Write-Output "  $ProductName not installed, nothing to upgrade"
+            Write-Output "  '$ProductName' not installed, nothing to upgrade"
         }
     }
     default {
