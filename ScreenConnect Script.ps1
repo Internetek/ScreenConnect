@@ -203,6 +203,7 @@ function Install-ScreenConnect {
         3010 { Write-Host "  Install appears successful. Reboot required to complete installation" }
         1641 { Write-Host "  Install appears successful. Installer has initiated a reboot" }
         default {
+			Write-Host " Exit code: $($Process.ExitCode)"
             Write-Host "  Exit code does not indicate success, dumping log:"
             Write-Host "  +++++++++++++++++++++++++++++++++"
             Get-Content $InstallerLogFile -ErrorAction SilentlyContinue | Select-Object -Last 50 | Write-Host
@@ -612,3 +613,4 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
