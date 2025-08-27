@@ -202,6 +202,8 @@ function Install-ScreenConnect {
         0 { Write-Host "  Install appears successful" }
         3010 { Write-Host "  Install appears successful. Reboot required to complete installation" }
         1641 { Write-Host "  Install appears successful. Installer has initiated a reboot" }
+		1618 { Write-Host "  Installer cannot start. Windows Installer service is busy with another installation or update" }
+  		1619 { Write-Host "  Installer cannot start. Windows Installer could not open the installation package" }
         default {
 			Write-Host " Exit code: $($Process.ExitCode)"
             Write-Host "  Exit code does not indicate success, dumping log:"
@@ -614,5 +616,4 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
-
 
