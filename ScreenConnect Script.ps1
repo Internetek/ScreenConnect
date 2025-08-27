@@ -359,6 +359,7 @@ function Uninstall-ScreenConnect {
         # Restarting service so we can log in if needed but hiding it so it doesn't clutter the log
         $Arguments = "/c Start-Service `"$ServiceName`""
         $Process = Start-Process -Wait cmd -ArgumentList $Arguments -PassThru
+		exit 1
     } else {
         Write-Host "  Uninstall appears successful"
     }
@@ -613,4 +614,5 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
 
