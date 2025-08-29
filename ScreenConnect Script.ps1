@@ -59,7 +59,7 @@ function Test-IsScreenConnectInstalled {
 # Stops ScreenConnect service and reports result
 function Stop-SCService {
     try {
-        $SCServices = Get-Service | Where-Object { $_.Name -like "ScreenConnect Client ($env:CWScreenConnectThumbprint)" }
+        $SCServices = Get-Service | Where-Object { $_.Name -like $ServiceName }
         if ($SCServices) {
             $SCServices | Stop-Service -Force -ErrorAction Stop
             return $true
@@ -75,7 +75,7 @@ function Stop-SCService {
 
 function Stop-SCProcesses {
     # Get all processes that start with "ScreenConnect"
-    $Processes = Get-Process | Where-Object { $_.Name -like "ScreenConnect ($env:CWScreenConnectThumbprint)" }
+    $Processes = Get-Process | Where-Object { $_.Name -like $ServiceName }
     if (-not $Processes) {
         Write-Host "  No ScreenConnect processes found."
         return $true
@@ -616,4 +616,5 @@ switch ($env:ScriptAction) {
 # === ERROR REPORTING === #
 # Not implemented
 Write-Host "Script completed"
+
 
