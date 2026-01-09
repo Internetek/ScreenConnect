@@ -82,7 +82,7 @@ Depending on how broken the lingering ScreenConnect installations are, this comp
 
 ---
 
-## Step #2: Run the `ScreenConnect Lingering Installations Search` component on the endpoint.
+## Step #2: Run the `ScreenConnect Installations Search` component on the endpoint.
 
 You should get an output similar to this:  
 
