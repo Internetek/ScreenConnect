@@ -1,5 +1,8 @@
 # Guide: Fixing Leftover Product Codes in ScreenConnect
 
+> [!NOTE]
+> This document is currently outdated after the recent updates of the search and fix scripts. A new article will be coming soon.
+
 Sometimes `Get-Package` doesn't uninstall every trace of ScreenConnect on a system, causing future installations to fail due to old product codes being detected by the MSI installer. The error will look similar to this: 
 
 ```plaintext
