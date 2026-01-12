@@ -1,7 +1,7 @@
 # Guide: Fixing Leftover Product Codes in ScreenConnect
 
 > [!NOTE]
-> **This document is currently outdated after the recent updates of the search and fix scripts. A new article will be coming soon.**
+> **This document is currently outdated after the recent updates of the search and fix scripts. Please use: [ScreenConnect Troubleshooting Guide](Troubleshooting/ScreenConnect Troubleshooting Guide.md)**
 
 ---
 
