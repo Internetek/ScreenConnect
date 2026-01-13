@@ -1,7 +1,5 @@
 <#
 .DESCRIPTION
-
-EDIT THIS
 This script performs a comprehensive search for all traces of ScreenConnect installations.
 It is designed to continue running even if certain paths or registry keys are inaccessible.
 
@@ -12,6 +10,7 @@ It is designed to continue running even if certain paths or registry keys are in
 Caleb Schmetzer - Internetek
 
 .NOTES
+N/A
 #>
 
 
