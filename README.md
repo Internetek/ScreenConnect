@@ -1,7 +1,7 @@
 # ScreenConnect
 We created this overly complex script to install, upgrade, and uninstall ScreenConnect due to issues we found with existing scripts and ScreenConnect being unable to upgrade itself with ThreatLocker in play. Most of the problems come from ScreenConnect hashes changing between versions and clients. ScreenConnect bakes the client information into the installed files so that it can have multiple instances installed at the same time, but this is also a headache for ThreatLocker (or any allow listing platform).
 
-For installing ScreenConnect, using a self-signed certicate works fine with ThreatLocker. Uninstall works fine as well. For automated upgrades within ScreenConnect, the downloaded EXE extracts a MSI that isn't signed and has a randomized name. We got around this by using this script, ran by DRMM, to pull down the MSI update, extracting the files, and overwriting the existing install. 
+For installing ScreenConnect, using a self-signed certicate works fine with ThreatLocker. Uninstall works fine as well. 
 
 Please treat this script as untrusted and verify the script yourself and on a test system before running it anywhere. This script is used internally and we make no guarantees that it'll work somewhere else and not break something.
 
