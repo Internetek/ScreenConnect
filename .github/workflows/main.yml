@@ -1,0 +1,16 @@
+name: PSScriptAnalyzer Action
+on: [push]
+
+jobs:
+  analyze:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run PSScriptAnalyzer
+        uses: microsoft/psscriptanalyzer-action@v1.1
+        with:
+          path: .\
+          recurse: true
+          output: results.sarif
